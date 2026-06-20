@@ -142,6 +142,17 @@ tr:hover { background: #fafafa; }
 <script>
 let currentClientId = null;
 
+function escapeHtml(text) {
+  if (text === null || text === undefined) return '';
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function renderText(text) {
+  return escapeHtml(String(text));
+}
+
 async function api(url, options = {}) {
   const res = await fetch(url, {
     headers: { 'Content-Type': 'application/json' },
@@ -156,7 +167,7 @@ async function loadClients() {
   if (res.code === 200) {
     const select = document.getElementById('clientSelect');
     select.innerHTML = res.data.map(c => 
-      `<option value="${c.id}">${c.client_name}</option>`
+      `<option value="${c.id}">${renderText(c.client_name)}</option>`
     ).join('');
     
     if (res.data.length > 0) {
@@ -223,7 +234,7 @@ function renderCategoryBreakdown(data) {
   container.innerHTML = data.map(item => `
     <div style="margin-bottom: 12px;">
       <div style="display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 13px;">
-        <span>${item.category_name}</span>
+        <span>${renderText(item.category_name)}</span>
         <span style="color: #888;">${item.hit_count} 次</span>
       </div>
       <div class="progress-bar">
@@ -295,11 +306,11 @@ function renderSamples(samples) {
     
     return `
       <div class="sample-item">
-        <div class="content">${item.content}</div>
+        <div class="content">${renderText(item.content)}</div>
         <div class="meta">
           <span><span class="badge badge-level-${item.risk_level}">${levelLabels[item.risk_level] || '未知'}</span></span>
-          <span>命中：${reasons.map(r => r.category).join('、') || '-'}</span>
-          <span>${item.timestamp}</span>
+          <span>命中：${renderText(reasons.map(r => r.category).join('、') || '-')}</span>
+          <span>${renderText(item.timestamp)}</span>
         </div>
       </div>
     `;

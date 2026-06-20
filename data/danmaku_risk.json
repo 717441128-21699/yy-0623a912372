@@ -17,6 +17,15 @@
       "status": 1,
       "created_at": "2026-06-20T16:13:20.903Z",
       "updated_at": "2026-06-20T16:13:20.903Z"
+    },
+    {
+      "id": 4,
+      "client_key": "meizhuang_client",
+      "client_name": "重复测试",
+      "industry": "测试",
+      "status": 1,
+      "created_at": "2026-06-20T16:34:08.253Z",
+      "updated_at": "2026-06-20T16:34:08.253Z"
     }
   ],
   "risk_categories": [
@@ -29,7 +38,25 @@
       "risk_level": 3,
       "suggestion": "建议立即删除弹幕，情节严重可禁言",
       "status": 1,
-      "created_at": "2026-06-20T16:13:20.903Z"
+      "created_at": "2026-06-20T16:13:20.903Z",
+      "keywords": [
+        {
+          "id": 24,
+          "category_id": 1,
+          "keyword": "测试关键词2",
+          "match_type": "exact",
+          "weight": 3,
+          "created_at": "2026-06-20T16:34:42.137Z"
+        },
+        {
+          "id": 23,
+          "category_id": 1,
+          "keyword": "测试关键词1",
+          "match_type": "contains",
+          "weight": 2,
+          "created_at": "2026-06-20T16:34:42.137Z"
+        }
+      ]
     },
     {
       "id": 2,
@@ -88,46 +115,6 @@
     }
   ],
   "risk_keywords": [
-    {
-      "id": 1,
-      "category_id": 1,
-      "keyword": "七天变白",
-      "match_type": "contains",
-      "weight": 2,
-      "created_at": "2026-06-20T16:13:20.904Z"
-    },
-    {
-      "id": 2,
-      "category_id": 1,
-      "keyword": "永久祛斑",
-      "match_type": "contains",
-      "weight": 2,
-      "created_at": "2026-06-20T16:13:20.904Z"
-    },
-    {
-      "id": 3,
-      "category_id": 1,
-      "keyword": "根治",
-      "match_type": "contains",
-      "weight": 1,
-      "created_at": "2026-06-20T16:13:20.904Z"
-    },
-    {
-      "id": 4,
-      "category_id": 1,
-      "keyword": "100%有效",
-      "match_type": "contains",
-      "weight": 2,
-      "created_at": "2026-06-20T16:13:20.905Z"
-    },
-    {
-      "id": 5,
-      "category_id": 1,
-      "keyword": "无效退款",
-      "match_type": "contains",
-      "weight": 1,
-      "created_at": "2026-06-20T16:13:20.905Z"
-    },
     {
       "id": 6,
       "category_id": 2,
@@ -263,6 +250,46 @@
       "match_type": "contains",
       "weight": 1,
       "created_at": "2026-06-20T16:13:20.908Z"
+    },
+    {
+      "id": 25,
+      "category_id": 1,
+      "keyword": "七天变白",
+      "match_type": "contains",
+      "weight": 2,
+      "created_at": "2026-06-20T16:34:42.164Z"
+    },
+    {
+      "id": 26,
+      "category_id": 1,
+      "keyword": "永久祛斑",
+      "match_type": "contains",
+      "weight": 2,
+      "created_at": "2026-06-20T16:34:42.164Z"
+    },
+    {
+      "id": 27,
+      "category_id": 1,
+      "keyword": "100%有效",
+      "match_type": "contains",
+      "weight": 2,
+      "created_at": "2026-06-20T16:34:42.164Z"
+    },
+    {
+      "id": 28,
+      "category_id": 1,
+      "keyword": "根治",
+      "match_type": "contains",
+      "weight": 1,
+      "created_at": "2026-06-20T16:34:42.165Z"
+    },
+    {
+      "id": 29,
+      "category_id": 1,
+      "keyword": "无效退款",
+      "match_type": "contains",
+      "weight": 1,
+      "created_at": "2026-06-20T16:34:42.165Z"
     }
   ],
   "whitelist": [
@@ -301,6 +328,15 @@
       "reason": "游戏常用语",
       "created_by": "admin",
       "created_at": "2026-06-20T16:13:20.908Z"
+    },
+    {
+      "id": 5,
+      "client_id": 1,
+      "word": "测试白名单词",
+      "word_type": "common",
+      "reason": "来自误报反馈",
+      "created_by": "admin",
+      "created_at": "2026-06-20T16:34:42.152Z"
     }
   ],
   "focus_words": [],
@@ -416,16 +452,99 @@
       "suggestions": "[]",
       "is_risky": 0,
       "created_at": "2026-06-20T16:14:55.431Z"
+    },
+    {
+      "id": 9,
+      "client_id": 1,
+      "room_id": "room_001",
+      "anchor_id": "anchor_001",
+      "content": "这个产品效果很好，可以根治，七天美白",
+      "timestamp": "2026-06-20T16:34:42.140Z",
+      "risk_level": 0,
+      "risk_categories": "[]",
+      "hit_reasons": "[]",
+      "suggestions": "[]",
+      "is_risky": 0,
+      "created_at": "2026-06-20T16:34:42.140Z"
+    },
+    {
+      "id": 10,
+      "client_id": 1,
+      "room_id": "test",
+      "anchor_id": "test",
+      "content": "这个产品可以根治糖尿病",
+      "timestamp": "2026-06-20T16:34:42.142Z",
+      "risk_level": 0,
+      "risk_categories": "[]",
+      "hit_reasons": "[]",
+      "suggestions": "[]",
+      "is_risky": 0,
+      "created_at": "2026-06-20T16:34:42.142Z"
+    },
+    {
+      "id": 11,
+      "client_id": 1,
+      "room_id": "test",
+      "anchor_id": "test",
+      "content": "正常的聊天内容",
+      "timestamp": "2026-06-20T16:34:42.144Z",
+      "risk_level": 0,
+      "risk_categories": "[]",
+      "hit_reasons": "[]",
+      "suggestions": "[]",
+      "is_risky": 0,
+      "created_at": "2026-06-20T16:34:42.144Z"
+    },
+    {
+      "id": 12,
+      "client_id": 1,
+      "room_id": "test",
+      "anchor_id": "test",
+      "content": "加微信 xxx 领取福利",
+      "timestamp": "2026-06-20T16:34:42.145Z",
+      "risk_level": 0,
+      "risk_categories": "[]",
+      "hit_reasons": "[]",
+      "suggestions": "[]",
+      "is_risky": 0,
+      "created_at": "2026-06-20T16:34:42.145Z"
+    },
+    {
+      "id": 13,
+      "client_id": 1,
+      "room_id": "test",
+      "anchor_id": "test",
+      "content": "<script>alert(\"xss\")</script> 根治糖尿病",
+      "timestamp": "2026-06-20T16:34:42.156Z",
+      "risk_level": 0,
+      "risk_categories": "[]",
+      "hit_reasons": "[]",
+      "suggestions": "[]",
+      "is_risky": 0,
+      "created_at": "2026-06-20T16:34:42.156Z"
     }
   ],
-  "false_positive_feedback": [],
+  "false_positive_feedback": [
+    {
+      "id": 1,
+      "danmaku_id": 0,
+      "client_id": 1,
+      "content": "这是一条正常弹幕，被误判了<script>alert(1)</script>",
+      "feedback_type": "false_positive",
+      "reason": "用户反馈误判",
+      "handled": 1,
+      "handled_by": "admin",
+      "handled_at": "2026-06-20T16:34:42.153Z",
+      "created_at": "2026-06-20T16:34:42.147Z"
+    }
+  ],
   "_counters": {
-    "clients": 2,
+    "clients": 5,
     "risk_categories": 6,
-    "risk_keywords": 22,
-    "whitelist": 4,
+    "risk_keywords": 29,
+    "whitelist": 5,
     "focus_words": 0,
-    "danmaku_logs": 8,
-    "false_positive_feedback": 0
+    "danmaku_logs": 13,
+    "false_positive_feedback": 1
   }
 }

@@ -15,9 +15,15 @@ router.post('/clients', (req, res) => {
     return res.status(400).json({ code: 400, message: '缺少必要参数', data: null });
   }
 
+  const existing = db.client.getByKey(client_key);
+  if (existing) {
+    return res.status(400).json({ code: 400, message: 'Client Key 已存在，请使用其他标识', data: null });
+  }
+
   try {
     const id = db.client.create(client_key, client_name, industry || '');
-    res.json({ code: 200, message: '创建成功', data: { id } });
+    const newClient = db.client.getById(id);
+    res.json({ code: 200, message: '创建成功', data: { id, client: newClient } });
   } catch (err) {
     res.status(500).json({ code: 500, message: err.message, data: null });
   }
@@ -29,7 +35,8 @@ router.put('/clients/:id', (req, res) => {
   
   db.client.update(id, client_name, industry, status);
   riskEngine.invalidateCache(id);
-  res.json({ code: 200, message: '更新成功', data: null });
+  const updatedClient = db.client.getById(id);
+  res.json({ code: 200, message: '更新成功', data: { client: updatedClient } });
 });
 
 router.delete('/clients/:id', (req, res) => {
@@ -69,7 +76,7 @@ router.post('/categories', (req, res) => {
 
 router.put('/categories/:id', (req, res) => {
   const id = parseInt(req.params.id);
-  const { category_name, description, risk_level, suggestion, status } = req.body;
+  const { category_name, description, risk_level, suggestion, status, keywords } = req.body;
   
   const category = db.riskCategory.getById(id);
   if (!category) {
@@ -77,8 +84,23 @@ router.put('/categories/:id', (req, res) => {
   }
 
   db.riskCategory.update(id, category_name, description, risk_level, suggestion, status);
+  
+  if (Array.isArray(keywords)) {
+    const existingKws = db.riskKeyword.getByCategoryId(id);
+    existingKws.forEach(kw => db.riskKeyword.remove(kw.id));
+    keywords.forEach(kw => {
+      if (kw.keyword && kw.keyword.trim()) {
+        db.riskKeyword.create(id, kw.keyword.trim(), kw.match_type || 'contains', kw.weight || 1);
+      }
+    });
+  }
+  
   riskEngine.invalidateCache(category.client_id);
-  res.json({ code: 200, message: '更新成功', data: null });
+  
+  const updatedCategory = db.riskCategory.getById(id);
+  updatedCategory.keywords = db.riskKeyword.getByCategoryId(id);
+  
+  res.json({ code: 200, message: '更新成功', data: { category: updatedCategory } });
 });
 
 router.delete('/categories/:id', (req, res) => {
