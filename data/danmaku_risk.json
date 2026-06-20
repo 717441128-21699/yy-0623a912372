@@ -1,0 +1,431 @@
+{
+  "clients": [
+    {
+      "id": 1,
+      "client_key": "makeup_001",
+      "client_name": "美妆优选",
+      "industry": "美妆",
+      "status": 1,
+      "created_at": "2026-06-20T16:13:20.902Z",
+      "updated_at": "2026-06-20T16:13:20.902Z"
+    },
+    {
+      "id": 2,
+      "client_key": "game_001",
+      "client_name": "星辰游戏",
+      "industry": "游戏",
+      "status": 1,
+      "created_at": "2026-06-20T16:13:20.903Z",
+      "updated_at": "2026-06-20T16:13:20.903Z"
+    }
+  ],
+  "risk_categories": [
+    {
+      "id": 1,
+      "client_id": 1,
+      "category_code": "false_efficacy",
+      "category_name": "虚假功效宣传",
+      "description": "涉及夸大产品功效、虚假宣传等内容",
+      "risk_level": 3,
+      "suggestion": "建议立即删除弹幕，情节严重可禁言",
+      "status": 1,
+      "created_at": "2026-06-20T16:13:20.903Z"
+    },
+    {
+      "id": 2,
+      "client_id": 1,
+      "category_code": "complaint",
+      "category_name": "投诉维权",
+      "description": "涉及产品质量投诉、维权等内容",
+      "risk_level": 2,
+      "suggestion": "建议客服介入跟进，记录反馈",
+      "status": 1,
+      "created_at": "2026-06-20T16:13:20.903Z"
+    },
+    {
+      "id": 3,
+      "client_id": 1,
+      "category_code": "pornographic",
+      "category_name": "涉黄擦边",
+      "description": "涉及低俗、色情擦边内容",
+      "risk_level": 3,
+      "suggestion": "建议立即删除，严重者封禁",
+      "status": 1,
+      "created_at": "2026-06-20T16:13:20.903Z"
+    },
+    {
+      "id": 4,
+      "client_id": 2,
+      "category_code": "cheat",
+      "category_name": "外挂作弊",
+      "description": "涉及游戏外挂、作弊软件相关内容",
+      "risk_level": 3,
+      "suggestion": "建议立即删除弹幕，封禁账号",
+      "status": 1,
+      "created_at": "2026-06-20T16:13:20.903Z"
+    },
+    {
+      "id": 5,
+      "client_id": 2,
+      "category_code": "minor",
+      "category_name": "未成年人相关",
+      "description": "涉及未成年人不良引导内容",
+      "risk_level": 3,
+      "suggestion": "建议立即删除，重点关注",
+      "status": 1,
+      "created_at": "2026-06-20T16:13:20.903Z"
+    },
+    {
+      "id": 6,
+      "client_id": 2,
+      "category_code": "pornographic",
+      "category_name": "涉黄擦边",
+      "description": "涉及低俗、色情擦边内容",
+      "risk_level": 2,
+      "suggestion": "建议删除弹幕，警告处理",
+      "status": 1,
+      "created_at": "2026-06-20T16:13:20.904Z"
+    }
+  ],
+  "risk_keywords": [
+    {
+      "id": 1,
+      "category_id": 1,
+      "keyword": "七天变白",
+      "match_type": "contains",
+      "weight": 2,
+      "created_at": "2026-06-20T16:13:20.904Z"
+    },
+    {
+      "id": 2,
+      "category_id": 1,
+      "keyword": "永久祛斑",
+      "match_type": "contains",
+      "weight": 2,
+      "created_at": "2026-06-20T16:13:20.904Z"
+    },
+    {
+      "id": 3,
+      "category_id": 1,
+      "keyword": "根治",
+      "match_type": "contains",
+      "weight": 1,
+      "created_at": "2026-06-20T16:13:20.904Z"
+    },
+    {
+      "id": 4,
+      "category_id": 1,
+      "keyword": "100%有效",
+      "match_type": "contains",
+      "weight": 2,
+      "created_at": "2026-06-20T16:13:20.905Z"
+    },
+    {
+      "id": 5,
+      "category_id": 1,
+      "keyword": "无效退款",
+      "match_type": "contains",
+      "weight": 1,
+      "created_at": "2026-06-20T16:13:20.905Z"
+    },
+    {
+      "id": 6,
+      "category_id": 2,
+      "keyword": "假货",
+      "match_type": "contains",
+      "weight": 2,
+      "created_at": "2026-06-20T16:13:20.905Z"
+    },
+    {
+      "id": 7,
+      "category_id": 2,
+      "keyword": "烂脸",
+      "match_type": "contains",
+      "weight": 2,
+      "created_at": "2026-06-20T16:13:20.905Z"
+    },
+    {
+      "id": 8,
+      "category_id": 2,
+      "keyword": "过敏",
+      "match_type": "contains",
+      "weight": 1,
+      "created_at": "2026-06-20T16:13:20.905Z"
+    },
+    {
+      "id": 9,
+      "category_id": 2,
+      "keyword": "投诉",
+      "match_type": "contains",
+      "weight": 1,
+      "created_at": "2026-06-20T16:13:20.906Z"
+    },
+    {
+      "id": 10,
+      "category_id": 2,
+      "keyword": "退款",
+      "match_type": "contains",
+      "weight": 1,
+      "created_at": "2026-06-20T16:13:20.906Z"
+    },
+    {
+      "id": 11,
+      "category_id": 3,
+      "keyword": "骚",
+      "match_type": "contains",
+      "weight": 2,
+      "created_at": "2026-06-20T16:13:20.906Z"
+    },
+    {
+      "id": 12,
+      "category_id": 3,
+      "keyword": "露",
+      "match_type": "contains",
+      "weight": 1,
+      "created_at": "2026-06-20T16:13:20.906Z"
+    },
+    {
+      "id": 13,
+      "category_id": 4,
+      "keyword": "外挂",
+      "match_type": "contains",
+      "weight": 3,
+      "created_at": "2026-06-20T16:13:20.906Z"
+    },
+    {
+      "id": 14,
+      "category_id": 4,
+      "keyword": "辅助",
+      "match_type": "contains",
+      "weight": 1,
+      "created_at": "2026-06-20T16:13:20.906Z"
+    },
+    {
+      "id": 15,
+      "category_id": 4,
+      "keyword": "脚本",
+      "match_type": "contains",
+      "weight": 2,
+      "created_at": "2026-06-20T16:13:20.907Z"
+    },
+    {
+      "id": 16,
+      "category_id": 4,
+      "keyword": "挂壁",
+      "match_type": "contains",
+      "weight": 2,
+      "created_at": "2026-06-20T16:13:20.907Z"
+    },
+    {
+      "id": 17,
+      "category_id": 4,
+      "keyword": "科技",
+      "match_type": "contains",
+      "weight": 1,
+      "created_at": "2026-06-20T16:13:20.907Z"
+    },
+    {
+      "id": 18,
+      "category_id": 5,
+      "keyword": "小学生",
+      "match_type": "contains",
+      "weight": 1,
+      "created_at": "2026-06-20T16:13:20.907Z"
+    },
+    {
+      "id": 19,
+      "category_id": 5,
+      "keyword": "未成年",
+      "match_type": "contains",
+      "weight": 2,
+      "created_at": "2026-06-20T16:13:20.907Z"
+    },
+    {
+      "id": 20,
+      "category_id": 5,
+      "keyword": "充值",
+      "match_type": "contains",
+      "weight": 1,
+      "created_at": "2026-06-20T16:13:20.907Z"
+    },
+    {
+      "id": 21,
+      "category_id": 6,
+      "keyword": "骚",
+      "match_type": "contains",
+      "weight": 2,
+      "created_at": "2026-06-20T16:13:20.907Z"
+    },
+    {
+      "id": 22,
+      "category_id": 6,
+      "keyword": "黄",
+      "match_type": "contains",
+      "weight": 1,
+      "created_at": "2026-06-20T16:13:20.908Z"
+    }
+  ],
+  "whitelist": [
+    {
+      "id": 1,
+      "client_id": 1,
+      "word": "666",
+      "word_type": "catchphrase",
+      "reason": "常见口头禅",
+      "created_by": "admin",
+      "created_at": "2026-06-20T16:13:20.908Z"
+    },
+    {
+      "id": 2,
+      "client_id": 1,
+      "word": "绝绝子",
+      "word_type": "catchphrase",
+      "reason": "网络流行语",
+      "created_by": "admin",
+      "created_at": "2026-06-20T16:13:20.908Z"
+    },
+    {
+      "id": 3,
+      "client_id": 2,
+      "word": "666",
+      "word_type": "catchphrase",
+      "reason": "常见口头禅",
+      "created_by": "admin",
+      "created_at": "2026-06-20T16:13:20.908Z"
+    },
+    {
+      "id": 4,
+      "client_id": 2,
+      "word": "牛批",
+      "word_type": "catchphrase",
+      "reason": "游戏常用语",
+      "created_by": "admin",
+      "created_at": "2026-06-20T16:13:20.908Z"
+    }
+  ],
+  "focus_words": [],
+  "danmaku_logs": [
+    {
+      "id": 1,
+      "client_id": 1,
+      "room_id": "10001",
+      "anchor_id": "????",
+      "content": "???????????",
+      "timestamp": "2026-06-20T16:13:34.610Z",
+      "risk_level": 0,
+      "risk_categories": "[]",
+      "hit_reasons": "[]",
+      "suggestions": "[]",
+      "is_risky": 0,
+      "created_at": "2026-06-20T16:13:34.610Z"
+    },
+    {
+      "id": 2,
+      "client_id": 2,
+      "room_id": "20001",
+      "anchor_id": "????",
+      "content": "????????",
+      "timestamp": "2026-06-20T16:13:59.680Z",
+      "risk_level": 0,
+      "risk_categories": "[]",
+      "hit_reasons": "[]",
+      "suggestions": "[]",
+      "is_risky": 0,
+      "created_at": "2026-06-20T16:13:59.680Z"
+    },
+    {
+      "id": 3,
+      "client_id": 1,
+      "room_id": "10001",
+      "anchor_id": "test_anchor",
+      "content": "这个产品七天变白不是梦",
+      "timestamp": "2026-06-20T16:14:55.413Z",
+      "risk_level": 3,
+      "risk_categories": "[\"false_efficacy\"]",
+      "hit_reasons": "[{\"category\":\"虚假功效宣传\",\"categoryCode\":\"false_efficacy\",\"keywords\":[\"七天变白\"],\"description\":\"命中虚假功效宣传类别，关键词：七天变白\"}]",
+      "suggestions": "[\"建议立即删除弹幕，情节严重可禁言\"]",
+      "is_risky": 1,
+      "created_at": "2026-06-20T16:14:55.413Z"
+    },
+    {
+      "id": 4,
+      "client_id": 1,
+      "room_id": "10001",
+      "anchor_id": "test_anchor",
+      "content": "用了烂脸，我要投诉退款",
+      "timestamp": "2026-06-20T16:14:55.421Z",
+      "risk_level": 2,
+      "risk_categories": "[\"complaint\"]",
+      "hit_reasons": "[{\"category\":\"投诉维权\",\"categoryCode\":\"complaint\",\"keywords\":[\"烂脸\",\"投诉\",\"退款\"],\"description\":\"命中投诉维权类别，关键词：烂脸、投诉、退款\"}]",
+      "suggestions": "[\"建议客服介入跟进，记录反馈\"]",
+      "is_risky": 1,
+      "created_at": "2026-06-20T16:14:55.421Z"
+    },
+    {
+      "id": 5,
+      "client_id": 1,
+      "room_id": "10001",
+      "anchor_id": "test_anchor",
+      "content": "这个产品绝绝子，666",
+      "timestamp": "2026-06-20T16:14:55.424Z",
+      "risk_level": 0,
+      "risk_categories": "[]",
+      "hit_reasons": "[]",
+      "suggestions": "[]",
+      "is_risky": 0,
+      "created_at": "2026-06-20T16:14:55.424Z"
+    },
+    {
+      "id": 6,
+      "client_id": 2,
+      "room_id": "10001",
+      "anchor_id": "test_anchor",
+      "content": "这个主播开外挂吧",
+      "timestamp": "2026-06-20T16:14:55.426Z",
+      "risk_level": 3,
+      "risk_categories": "[\"cheat\"]",
+      "hit_reasons": "[{\"category\":\"外挂作弊\",\"categoryCode\":\"cheat\",\"keywords\":[\"外挂\"],\"description\":\"命中外挂作弊类别，关键词：外挂\"}]",
+      "suggestions": "[\"建议立即删除弹幕，封禁账号\"]",
+      "is_risky": 1,
+      "created_at": "2026-06-20T16:14:55.426Z"
+    },
+    {
+      "id": 7,
+      "client_id": 2,
+      "room_id": "10001",
+      "anchor_id": "test_anchor",
+      "content": "未成年可以充值吗",
+      "timestamp": "2026-06-20T16:14:55.429Z",
+      "risk_level": 3,
+      "risk_categories": "[\"minor\"]",
+      "hit_reasons": "[{\"category\":\"未成年人相关\",\"categoryCode\":\"minor\",\"keywords\":[\"未成年\",\"充值\"],\"description\":\"命中未成年人相关类别，关键词：未成年、充值\"}]",
+      "suggestions": "[\"建议立即删除，重点关注\"]",
+      "is_risky": 1,
+      "created_at": "2026-06-20T16:14:55.429Z"
+    },
+    {
+      "id": 8,
+      "client_id": 1,
+      "room_id": "10001",
+      "anchor_id": "test_anchor",
+      "content": "主播今天好漂亮",
+      "timestamp": "2026-06-20T16:14:55.431Z",
+      "risk_level": 0,
+      "risk_categories": "[]",
+      "hit_reasons": "[]",
+      "suggestions": "[]",
+      "is_risky": 0,
+      "created_at": "2026-06-20T16:14:55.431Z"
+    }
+  ],
+  "false_positive_feedback": [],
+  "_counters": {
+    "clients": 2,
+    "risk_categories": 6,
+    "risk_keywords": 22,
+    "whitelist": 4,
+    "focus_words": 0,
+    "danmaku_logs": 8,
+    "false_positive_feedback": 0
+  }
+}

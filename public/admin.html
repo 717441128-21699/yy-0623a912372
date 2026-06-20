@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>弹幕风险筛查 - 运营配置管理</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f0f2f5; color: #333; }
+.header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; }
+.header h1 { font-size: 20px; font-weight: 600; }
+.header .nav { display: flex; gap: 16px; }
+.header .nav a { color: rgba(255,255,255,0.85); text-decoration: none; padding: 6px 12px; border-radius: 6px; font-size: 14px; }
+.header .nav a.active, .header .nav a:hover { background: rgba(255,255,255,0.2); color: white; }
+.container { display: flex; min-height: calc(100vh - 56px); }
+.sidebar { width: 220px; background: white; border-right: 1px solid #e8e8e8; padding: 16px 0; }
+.sidebar .menu-item { padding: 12px 20px; cursor: pointer; font-size: 14px; border-left: 3px solid transparent; transition: all 0.2s; }
+.sidebar .menu-item:hover { background: #f5f5f5; }
+.sidebar .menu-item.active { background: #e6f7ff; border-left-color: #1890ff; color: #1890ff; font-weight: 500; }
+.main { flex: 1; padding: 20px; overflow-y: auto; }
+.card { background: white; border-radius: 8px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 16px; }
+.card-title { font-size: 16px; font-weight: 600; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center; }
+.btn { padding: 6px 16px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; transition: all 0.2s; }
+.btn-primary { background: #1890ff; color: white; }
+.btn-primary:hover { background: #40a9ff; }
+.btn-danger { background: #ff4d4f; color: white; }
+.btn-danger:hover { background: #ff7875; }
+.btn-default { background: white; border: 1px solid #d9d9d9; color: #333; }
+.btn-default:hover { border-color: #40a9ff; color: #1890ff; }
+.btn-small { padding: 4px 10px; font-size: 12px; }
+table { width: 100%; border-collapse: collapse; }
+th, td { padding: 12px; text-align: left; border-bottom: 1px solid #f0f0f0; font-size: 14px; }
+th { background: #fafafa; font-weight: 500; color: #666; }
+tr:hover { background: #fafafa; }
+.client-select { padding: 8px 12px; border: 1px solid #d9d9d9; border-radius: 4px; font-size: 14px; min-width: 200px; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12px; }
+.badge-level-1 { background: #e6f7ff; color: #1890ff; }
+.badge-level-2 { background: #fff7e6; color: #fa8c16; }
+.badge-level-3 { background: #fff1f0; color: #ff4d4f; }
+.badge-handled { background: #f6ffed; color: #52c41a; }
+.badge-pending { background: #fff1f0; color: #ff4d4f; }
+.form-group { margin-bottom: 16px; }
+.form-group label { display: block; margin-bottom: 6px; font-size: 14px; color: #666; }
+.form-group input, .form-group select, .form-group textarea { width: 100%; padding: 8px 12px; border: 1px solid #d9d9d9; border-radius: 4px; font-size: 14px; }
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: #40a9ff; box-shadow: 0 0 0 2px rgba(24,144,255,0.2); }
+.form-row { display: flex; gap: 16px; }
+.form-row .form-group { flex: 1; }
+.modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+.modal { background: white; border-radius: 8px; padding: 24px; width: 500px; max-width: 90vw; max-height: 80vh; overflow-y: auto; }
+.modal-title { font-size: 18px; font-weight: 600; margin-bottom: 20px; }
+.modal-footer { display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px; padding-top: 16px; border-top: 1px solid #f0f0f0; }
+.category-section { margin-bottom: 20px; padding: 16px; background: #fafafa; border-radius: 6px; }
+.category-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.category-name { font-weight: 500; font-size: 15px; }
+.keyword-tag { display: inline-block; padding: 4px 10px; background: white; border: 1px solid #d9d9d9; border-radius: 4px; font-size: 12px; margin: 4px; }
+.keyword-tag .remove { color: #ff4d4f; cursor: pointer; margin-left: 6px; }
+.empty { text-align: center; padding: 40px; color: #999; font-size: 14px; }
+.danmaku-content { max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tabs { display: flex; border-bottom: 2px solid #f0f0f0; margin-bottom: 16px; }
+.tab { padding: 10px 20px; cursor: pointer; font-size: 14px; border-bottom: 2px solid transparent; margin-bottom: -2px; }
+.tab.active { color: #1890ff; border-bottom-color: #1890ff; font-weight: 500; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>🎯 弹幕风险筛查管理平台</h1>
+  <div class="nav">
+    <a href="admin.html" class="active">运营配置</a>
+    <a href="report.html">月度报告</a>
+  </div>
+</div>
+<div class="container">
+  <div class="sidebar">
+    <div class="menu-item active" data-menu="clients">客户管理</div>
+    <div class="menu-item" data-menu="categories">风险口径配置</div>
+    <div class="menu-item" data-menu="whitelist">白名单管理</div>
+    <div class="menu-item" data-menu="focus">重点关注词</div>
+    <div class="menu-item" data-menu="feedback">误报反馈</div>
+    <div class="menu-item" data-menu="danmakus">弹幕记录</div>
+  </div>
+  <div class="main">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+      <div>
+        <label style="margin-right: 8px; font-size: 14px;">选择客户：</label>
+        <select id="clientSelect" class="client-select" onchange="switchClient()"></select>
+      </div>
+      <div>
+        <button class="btn btn-primary" onclick="showAddClientModal()">+ 新增客户</button>
+      </div>
+    </div>
+
+    <div id="page-clients" class="page">
+      <div class="card">
+        <div class="card-title">客户列表</div>
+        <table>
+          <thead>
+            <tr>
+              <th>客户名称</th>
+              <th>Client Key</th>
+              <th>行业</th>
+              <th>状态</th>
+              <th>创建时间</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="clientTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="page-categories" class="page" style="display:none;">
+      <div class="card">
+        <div class="card-title">
+          <span>风险口径配置</span>
+          <button class="btn btn-primary btn-small" onclick="showAddCategoryModal()">+ 新增风险类别</button>
+        </div>
+        <div id="categoryList"></div>
+      </div>
+    </div>
+
+    <div id="page-whitelist" class="page" style="display:none;">
+      <div class="card">
+        <div class="card-title">
+          <span>白名单管理</span>
+          <button class="btn btn-primary btn-small" onclick="showAddWhitelistModal()">+ 添加白名单词</button>
+        </div>
+        <div style="margin-bottom: 12px; color: #666; font-size: 13px;">
+          白名单中的词汇命中时将忽略风险判定，可用于添加常见口头禅、品牌黑称、活动专属词等
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>词汇</th>
+              <th>类型</th>
+              <th>原因</th>
+              <th>添加人</th>
+              <th>添加时间</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="whitelistTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="page-focus" class="page" style="display:none;">
+      <div class="card">
+        <div class="card-title">
+          <span>重点关注词</span>
+          <button class="btn btn-primary btn-small" onclick="showAddFocusModal()">+ 添加关注词</button>
+        </div>
+        <div style="margin-bottom: 12px; color: #666; font-size: 13px;">
+          重点关注词将提升风险等级，用于重点监控特定词汇
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>词汇</th>
+              <th>关注等级</th>
+              <th>原因</th>
+              <th>添加人</th>
+              <th>添加时间</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="focusTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="page-feedback" class="page" style="display:none;">
+      <div class="card">
+        <div class="card-title">误报反馈管理</div>
+        <div class="tabs">
+          <div class="tab active" data-tab="pending" onclick="switchFeedbackTab('pending')">待处理</div>
+          <div class="tab" data-tab="handled" onclick="switchFeedbackTab('handled')">已处理</div>
+          <div class="tab" data-tab="all" onclick="switchFeedbackTab('all')">全部</div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>弹幕内容</th>
+              <th>反馈类型</th>
+              <th>反馈原因</th>
+              <th>状态</th>
+              <th>反馈时间</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="feedbackTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="page-danmakus" class="page" style="display:none;">
+      <div class="card">
+        <div class="card-title">
+          <span>弹幕记录</span>
+          <div>
+            <button class="btn btn-default btn-small" onclick="loadDanmakus('all')">全部</button>
+            <button class="btn btn-primary btn-small" onclick="loadDanmakus('risky')">仅风险</button>
+          </div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>弹幕内容</th>
+              <th>房间号</th>
+              <th>主播ID</th>
+              <th>风险等级</th>
+              <th>命中原因</th>
+              <th>时间</th>
+            </tr>
+          </thead>
+          <tbody id="danmakuTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="modalContainer"></div>
+
+<script>
+let currentClientId = null;
+let currentMenu = 'clients';
+let currentFeedbackTab = 'pending';
+
+async function api(url, options = {}) {
+  const res = await fetch(url, {
+    headers: { 'Content-Type': 'application/json' },
+    ...options,
+    body: options.body ? JSON.stringify(options.body) : undefined
+  });
+  return res.json();
+}
+
+async function loadClients() {
+  const res = await api('/api/admin/clients');
+  if (res.code === 200) {
+    const select = document.getElementById('clientSelect');
+    select.innerHTML = res.data.map(c => 
+      `<option value="${c.id}">${c.client_name} (${c.client_key})</option>`
+    ).join('');
+    
+    const tbody = document.getElementById('clientTableBody');
+    tbody.innerHTML = res.data.map(c => `
+      <tr>
+        <td>${c.client_name}</td>
+        <td><code>${c.client_key}</code></td>
+        <td>${c.industry || '-'}</td>
+        <td>${c.status === 1 ? '<span class="badge badge-level-1">正常</span>' : '<span class="badge badge-pending">停用</span>'}</td>
+        <td>${c.created_at}</td>
+        <td>
+          <button class="btn btn-default btn-small" onclick="editClient(${c.id})">编辑</button>
+          <button class="btn btn-danger btn-small" onclick="deleteClient(${c.id})">删除</button>
+        </td>
+      </tr>
+    `).join('');
+
+    if (res.data.length > 0 && !currentClientId) {
+      currentClientId = res.data[0].id;
+    }
+  }
+}
+
+function switchClient() {
+  currentClientId = parseInt(document.getElementById('clientSelect').value);
+  if (currentMenu === 'categories') loadCategories();
+  else if (currentMenu === 'whitelist') loadWhitelist();
+  else if (currentMenu === 'focus') loadFocusWords();
+  else if (currentMenu === 'feedback') loadFeedback();
+  else if (currentMenu === 'danmakus') loadDanmakus();
+}
+
+function switchMenu(menu) {
+  currentMenu = menu;
+  document.querySelectorAll('.menu-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.menu === menu);
+  });
+  document.querySelectorAll('.page').forEach(el => {
+    el.style.display = 'none';
+  });
+  document.getElementById('page-' + menu).style.display = 'block';
+  
+  if (menu === 'categories') loadCategories();
+  else if (menu === 'whitelist') loadWhitelist();
+  else if (menu === 'focus') loadFocusWords();
+  else if (menu === 'feedback') loadFeedback();
+  else if (menu === 'danmakus') loadDanmakus();
+}
+
+document.querySelectorAll('.menu-item').forEach(el => {
+  el.addEventListener('click', () => switchMenu(el.dataset.menu));
+});
+
+async function loadCategories() {
+  if (!currentClientId) return;
+  const res = await api(`/api/admin/clients/${currentClientId}/categories`);
+  if (res.code === 200) {
+    const container = document.getElementById('categoryList');
+    if (res.data.length === 0) {
+      container.innerHTML = '<div class="empty">暂无风险类别配置</div>';
+      return;
+    }
+    container.innerHTML = res.data.map(cat => `
+      <div class="category-section">
+        <div class="category-header">
+          <div>
+            <span class="category-name">${cat.category_name}</span>
+            <span class="badge badge-level-${cat.risk_level}">${cat.risk_level === 3 ? '高风险' : cat.risk_level === 2 ? '中风险' : '低风险'}</span>
+            <span style="margin-left: 8px; color: #999; font-size: 12px;">编码: ${cat.category_code}</span>
+          </div>
+          <div>
+            <button class="btn btn-default btn-small" onclick="editCategory(${cat.id})">编辑</button>
+            <button class="btn btn-primary btn-small" onclick="showAddKeywordModal(${cat.id})">+ 关键词</button>
+            <button class="btn btn-danger btn-small" onclick="deleteCategory(${cat.id})">删除</button>
+          </div>
+        </div>
+        <div style="color: #666; font-size: 13px; margin-bottom: 8px;">${cat.description || '暂无描述'}</div>
+        <div style="color: #888; font-size: 12px; margin-bottom: 8px;">建议动作：${cat.suggestion || '无'}</div>
+        <div>
+          ${(cat.keywords || []).map(kw => `
+            <span class="keyword-tag">
+              ${kw.keyword}
+              <span class="remove" onclick="deleteKeyword(${kw.id})">×</span>
+            </span>
+          `).join('') || '<span style="color: #999; font-size: 12px;">暂无关键词</span>'}
+        </div>
+      </div>
+    `).join('');
+  }
+}
+
+async function loadWhitelist() {
+  if (!currentClientId) return;
+  const res = await api(`/api/admin/clients/${currentClientId}/whitelist`);
+  if (res.code === 200) {
+    const tbody = document.getElementById('whitelistTableBody');
+    if (res.data.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" class="empty">暂无白名单词</td></tr>';
+      return;
+    }
+    const typeMap = { catchphrase: '口头禅', brand: '品牌黑称', event: '活动专属词', common: '通用' };
+    tbody.innerHTML = res.data.map(item => `
+      <tr>
+        <td><strong>${item.word}</strong></td>
+        <td>${typeMap[item.word_type] || item.word_type}</td>
+        <td>${item.reason || '-'}</td>
+        <td>${item.created_by || '-'}</td>
+        <td>${item.created_at}</td>
+        <td><button class="btn btn-danger btn-small" onclick="deleteWhitelist(${item.id})">删除</button></td>
+      </tr>
+    `).join('');
+  }
+}
+
+async function loadFocusWords() {
+  if (!currentClientId) return;
+  const res = await api(`/api/admin/clients/${currentClientId}/focus-words`);
+  if (res.code === 200) {
+    const tbody = document.getElementById('focusTableBody');
+    if (res.data.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" class="empty">暂无重点关注词</td></tr>';
+      return;
+    }
+    tbody.innerHTML = res.data.map(item => `
+      <tr>
+        <td><strong>${item.word}</strong></td>
+        <td><span class="badge badge-level-${item.focus_level}">${item.focus_level}级</span></td>
+        <td>${item.reason || '-'}</td>
+        <td>${item.created_by || '-'}</td>
+        <td>${item.created_at}</td>
+        <td><button class="btn btn-danger btn-small" onclick="deleteFocusWord(${item.id})">删除</button></td>
+      </tr>
+    `).join('');
+  }
+}
+
+async function loadFeedback() {
+  if (!currentClientId) return;
+  let handled = null;
+  if (currentFeedbackTab === 'pending') handled = false;
+  else if (currentFeedbackTab === 'handled') handled = true;
+  
+  const res = await api(`/api/report/clients/${currentClientId}/feedback?handled=${handled === null ? '' : handled}`);
+  if (res.code === 200) {
+    const tbody = document.getElementById('feedbackTableBody');
+    if (res.data.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" class="empty">暂无反馈记录</td></tr>';
+      return;
+    }
+    tbody.innerHTML = res.data.map(item => `
+      <tr>
+        <td class="danmaku-content">${item.content || '-'}</td>
+        <td>${item.feedback_type}</td>
+        <td class="danmaku-content">${item.reason || '-'}</td>
+        <td>${item.handled ? '<span class="badge badge-handled">已处理</span>' : '<span class="badge badge-pending">待处理</span>'}</td>
+        <td>${item.created_at}</td>
+        <td>
+          ${!item.handled ? `<button class="btn btn-primary btn-small" onclick="handleFeedback(${item.id})">标记处理</button>` : item.handled_by}
+        </td>
+      </tr>
+    `).join('');
+  }
+}
+
+function switchFeedbackTab(tab) {
+  currentFeedbackTab = tab;
+  document.querySelectorAll('[data-tab]').forEach(el => {
+    el.classList.toggle('active', el.dataset.tab === tab);
+  });
+  loadFeedback();
+}
+
+async function loadDanmakus(type = 'all') {
+  if (!currentClientId) return;
+  const risky = type === 'risky' ? '1' : '0';
+  const url = type === 'all' 
+    ? `/api/report/clients/${currentClientId}/danmakus?limit=50`
+    : `/api/report/clients/${currentClientId}/danmakus?risky=1&limit=50`;
+  
+  const res = await api(url);
+  if (res.code === 200) {
+    const tbody = document.getElementById('danmakuTableBody');
+    if (res.data.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" class="empty">暂无弹幕记录</td></tr>';
+      return;
+    }
+    tbody.innerHTML = res.data.map(item => `
+      <tr>
+        <td class="danmaku-content">${item.content}</td>
+        <td>${item.room_id || '-'}</td>
+        <td>${item.anchor_id || '-'}</td>
+        <td><span class="badge badge-level-${item.risk_level}">${item.risk_level_label}</span></td>
+        <td class="danmaku-content">${item.hit_reasons.map(r => r.description).join('; ') || '-'}</td>
+        <td>${item.timestamp}</td>
+      </tr>
+    `).join('');
+  }
+}
+
+function showModal(html) {
+  document.getElementById('modalContainer').innerHTML = `
+    <div class="modal-overlay" onclick="if(event.target === this) closeModal()">
+      <div class="modal">${html}</div>
+    </div>
+  `;
+}
+
+function closeModal() {
+  document.getElementById('modalContainer').innerHTML = '';
+}
+
+function showAddClientModal() {
+  showModal(`
+    <div class="modal-title">新增客户</div>
+    <div class="form-group">
+      <label>客户名称</label>
+      <input type="text" id="newClientName" placeholder="请输入客户名称">
+    </div>
+    <div class="form-group">
+      <label>Client Key</label>
+      <input type="text" id="newClientKey" placeholder="请输入唯一标识">
+    </div>
+    <div class="form-group">
+      <label>所属行业</label>
+      <select id="newClientIndustry">
+        <option value="">请选择</option>
+        <option value="美妆">美妆</option>
+        <option value="游戏">游戏</option>
+        <option value="电商">电商</option>
+        <option value="教育">教育</option>
+        <option value="其他">其他</option>
+      </select>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-default" onclick="closeModal()">取消</button>
+      <button class="btn btn-primary" onclick="addClient()">确认添加</button>
+    </div>
+  `);
+}
+
+async function addClient() {
+  const name = document.getElementById('newClientName').value;
+  const key = document.getElementById('newClientKey').value;
+  const industry = document.getElementById('newClientIndustry').value;
+  
+  if (!name || !key) {
+    alert('请填写客户名称和Client Key');
+    return;
+  }
+  
+  const res = await api('/api/admin/clients', {
+    method: 'POST',
+    body: { client_name: name, client_key: key, industry }
+  });
+  
+  if (res.code === 200) {
+    closeModal();
+    loadClients();
+  } else {
+    alert(res.message);
+  }
+}
+
+function showAddCategoryModal() {
+  showModal(`
+    <div class="modal-title">新增风险类别</div>
+    <div class="form-group">
+      <label>类别编码</label>
+      <input type="text" id="newCategoryCode" placeholder="如：false_efficacy">
+    </div>
+    <div class="form-group">
+      <label>类别名称</label>
+      <input type="text" id="newCategoryName" placeholder="如：虚假功效宣传">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>风险等级</label>
+        <select id="newCategoryLevel">
+          <option value="1">低风险</option>
+          <option value="2" selected>中风险</option>
+          <option value="3">高风险</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>类别描述</label>
+      <textarea id="newCategoryDesc" rows="2"></textarea>
+    </div>
+    <div class="form-group">
+      <label>建议动作</label>
+      <textarea id="newCategorySuggestion" rows="2"></textarea>
+    </div>
+    <div class="form-group">
+      <label>关键词（多个用逗号分隔）</label>
+      <textarea id="newCategoryKeywords" rows="3" placeholder="关键词1,关键词2,关键词3"></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-default" onclick="closeModal()">取消</button>
+      <button class="btn btn-primary" onclick="addCategory()">确认添加</button>
+    </div>
+  `);
+}
+
+async function addCategory() {
+  const code = document.getElementById('newCategoryCode').value;
+  const name = document.getElementById('newCategoryName').value;
+  const level = parseInt(document.getElementById('newCategoryLevel').value);
+  const desc = document.getElementById('newCategoryDesc').value;
+  const suggestion = document.getElementById('newCategorySuggestion').value;
+  const keywords = document.getElementById('newCategoryKeywords').value;
+  
+  if (!code || !name) {
+    alert('请填写类别编码和名称');
+    return;
+  }
+  
+  const res = await api('/api/admin/categories', {
+    method: 'POST',
+    body: {
+      client_id: currentClientId,
+      category_code: code,
+      category_name: name,
+      risk_level: level,
+      description: desc,
+      suggestion
+    }
+  });
+  
+  if (res.code === 200 && keywords) {
+    const keywordList = keywords.split(',').map(k => k.trim()).filter(k => k);
+    for (const kw of keywordList) {
+      await api('/api/admin/keywords', {
+        method: 'POST',
+        body: { category_id: res.data.id, keyword: kw }
+      });
+    }
+  }
+  
+  if (res.code === 200) {
+    closeModal();
+    loadCategories();
+  } else {
+    alert(res.message);
+  }
+}
+
+function showAddKeywordModal(categoryId) {
+  showModal(`
+    <div class="modal-title">添加关键词</div>
+    <div class="form-group">
+      <label>关键词</label>
+      <input type="text" id="newKeyword" placeholder="请输入关键词">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>匹配方式</label>
+        <select id="newKeywordMatch">
+          <option value="contains">包含匹配</option>
+          <option value="exact">精确匹配</option>
+          <option value="regex">正则匹配</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>权重</label>
+        <select id="newKeywordWeight">
+          <option value="1">1 - 普通</option>
+          <option value="2">2 - 重要</option>
+          <option value="3">3 - 严重</option>
+        </select>
+      </div>
+    </div>
+    <input type="hidden" id="newKeywordCategoryId" value="${categoryId}">
+    <div class="modal-footer">
+      <button class="btn btn-default" onclick="closeModal()">取消</button>
+      <button class="btn btn-primary" onclick="addKeyword()">确认添加</button>
+    </div>
+  `);
+}
+
+async function addKeyword() {
+  const keyword = document.getElementById('newKeyword').value;
+  const matchType = document.getElementById('newKeywordMatch').value;
+  const weight = parseInt(document.getElementById('newKeywordWeight').value);
+  const categoryId = parseInt(document.getElementById('newKeywordCategoryId').value);
+  
+  if (!keyword) {
+    alert('请输入关键词');
+    return;
+  }
+  
+  const res = await api('/api/admin/keywords', {
+    method: 'POST',
+    body: { category_id: categoryId, keyword, match_type: matchType, weight }
+  });
+  
+  if (res.code === 200) {
+    closeModal();
+    loadCategories();
+  } else {
+    alert(res.message);
+  }
+}
+
+function showAddWhitelistModal() {
+  showModal(`
+    <div class="modal-title">添加白名单词</div>
+    <div class="form-group">
+      <label>词汇</label>
+      <input type="text" id="newWhitelistWord" placeholder="请输入白名单词汇">
+    </div>
+    <div class="form-group">
+      <label>类型</label>
+      <select id="newWhitelistType">
+        <option value="catchphrase">常见口头禅</option>
+        <option value="brand">品牌黑称</option>
+        <option value="event">活动专属词</option>
+        <option value="common">通用</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>添加原因</label>
+      <textarea id="newWhitelistReason" rows="2"></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-default" onclick="closeModal()">取消</button>
+      <button class="btn btn-primary" onclick="addWhitelist()">确认添加</button>
+    </div>
+  `);
+}
+
+async function addWhitelist() {
+  const word = document.getElementById('newWhitelistWord').value;
+  const type = document.getElementById('newWhitelistType').value;
+  const reason = document.getElementById('newWhitelistReason').value;
+  
+  if (!word) {
+    alert('请输入词汇');
+    return;
+  }
+  
+  const res = await api('/api/admin/whitelist', {
+    method: 'POST',
+    body: { client_id: currentClientId, word, word_type: type, reason }
+  });
+  
+  if (res.code === 200) {
+    closeModal();
+    loadWhitelist();
+  } else {
+    alert(res.message);
+  }
+}
+
+function showAddFocusModal() {
+  showModal(`
+    <div class="modal-title">添加重点关注词</div>
+    <div class="form-group">
+      <label>词汇</label>
+      <input type="text" id="newFocusWord" placeholder="请输入关注词汇">
+    </div>
+    <div class="form-group">
+      <label>关注等级</label>
+      <select id="newFocusLevel">
+        <option value="1">1级 - 关注</option>
+        <option value="2">2级 - 重点关注</option>
+        <option value="3">3级 - 高度关注</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>原因</label>
+      <textarea id="newFocusReason" rows="2"></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-default" onclick="closeModal()">取消</button>
+      <button class="btn btn-primary" onclick="addFocusWord()">确认添加</button>
+    </div>
+  `);
+}
+
+async function addFocusWord() {
+  const word = document.getElementById('newFocusWord').value;
+  const level = parseInt(document.getElementById('newFocusLevel').value);
+  const reason = document.getElementById('newFocusReason').value;
+  
+  if (!word) {
+    alert('请输入词汇');
+    return;
+  }
+  
+  const res = await api('/api/admin/focus-words', {
+    method: 'POST',
+    body: { client_id: currentClientId, word, focus_level: level, reason }
+  });
+  
+  if (res.code === 200) {
+    closeModal();
+    loadFocusWords();
+  } else {
+    alert(res.message);
+  }
+}
+
+async function deleteKeyword(id) {
+  if (!confirm('确认删除此关键词？')) return;
+  await api(`/api/admin/keywords/${id}`, { method: 'DELETE' });
+  loadCategories();
+}
+
+async function deleteWhitelist(id) {
+  if (!confirm('确认删除此白名单词？')) return;
+  await api(`/api/admin/whitelist/${id}`, { method: 'DELETE' });
+  loadWhitelist();
+}
+
+async function deleteFocusWord(id) {
+  if (!confirm('确认删除此关注词？')) return;
+  await api(`/api/admin/focus-words/${id}`, { method: 'DELETE' });
+  loadFocusWords();
+}
+
+async function deleteCategory(id) {
+  if (!confirm('确认删除此风险类别？所有相关关键词也会被删除。')) return;
+  await api(`/api/admin/categories/${id}`, { method: 'DELETE' });
+  loadCategories();
+}
+
+async function deleteClient(id) {
+  if (!confirm('确认删除此客户？所有配置和数据都将被删除。')) return;
+  await api(`/api/admin/clients/${id}`, { method: 'DELETE' });
+  currentClientId = null;
+  loadClients();
+}
+
+async function editClient(id) {
+  alert('编辑功能可自行扩展，当前支持新增和删除');
+}
+
+async function editCategory(id) {
+  alert('编辑功能可自行扩展，当前支持新增和删除');
+}
+
+async function handleFeedback(id) {
+  const res = await api(`/api/report/feedback/${id}/handle`, { method: 'POST', body: {} });
+  if (res.code === 200) {
+    loadFeedback();
+  }
+}
+
+loadClients();
+</script>
+</body>
+</html>

@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>弹幕风险筛查 - 月度报告</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f0f2f5; color: #333; }
+.header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; }
+.header h1 { font-size: 20px; font-weight: 600; }
+.header .nav { display: flex; gap: 16px; }
+.header .nav a { color: rgba(255,255,255,0.85); text-decoration: none; padding: 6px 12px; border-radius: 6px; font-size: 14px; }
+.header .nav a.active, .header .nav a:hover { background: rgba(255,255,255,0.2); color: white; }
+.container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+.card { background: white; border-radius: 8px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 16px; }
+.card-title { font-size: 16px; font-weight: 600; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #f0f0f0; }
+.stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 16px; }
+.stat-card { background: white; border-radius: 8px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+.stat-card .label { font-size: 13px; color: #888; margin-bottom: 8px; }
+.stat-card .value { font-size: 28px; font-weight: 600; color: #333; }
+.stat-card .value.highlight { color: #1890ff; }
+.stat-card .value.warning { color: #fa8c16; }
+.stat-card .value.danger { color: #ff4d4f; }
+.stat-card .value.success { color: #52c41a; }
+.stat-card .trend { font-size: 12px; color: #999; margin-top: 4px; }
+.select-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.client-select, .month-select { padding: 8px 12px; border: 1px solid #d9d9d9; border-radius: 4px; font-size: 14px; min-width: 200px; background: white; }
+.btn { padding: 6px 16px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; }
+.btn-primary { background: #1890ff; color: white; }
+.btn-primary:hover { background: #40a9ff; }
+table { width: 100%; border-collapse: collapse; }
+th, td { padding: 12px; text-align: left; border-bottom: 1px solid #f0f0f0; font-size: 14px; }
+th { background: #fafafa; font-weight: 500; color: #666; }
+tr:hover { background: #fafafa; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12px; }
+.badge-level-1 { background: #e6f7ff; color: #1890ff; }
+.badge-level-2 { background: #fff7e6; color: #fa8c16; }
+.badge-level-3 { background: #fff1f0; color: #ff4d4f; }
+.progress-bar { height: 8px; background: #f0f0f0; border-radius: 4px; overflow: hidden; }
+.progress-fill { height: 100%; background: linear-gradient(90deg, #1890ff, #667eea); border-radius: 4px; }
+.sample-item { padding: 12px; border-bottom: 1px solid #f0f0f0; }
+.sample-item:last-child { border-bottom: none; }
+.sample-item .content { font-size: 14px; margin-bottom: 6px; }
+.sample-item .meta { font-size: 12px; color: #999; display: flex; gap: 16px; }
+.section-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.empty { text-align: center; padding: 40px; color: #999; font-size: 14px; }
+.danmaku-content { max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.report-header { text-align: center; padding: 20px 0; }
+.report-header h2 { font-size: 24px; margin-bottom: 8px; }
+.report-header .subtitle { color: #888; font-size: 14px; }
+.chart-container { height: 200px; display: flex; align-items: flex-end; justify-content: space-around; gap: 8px; padding: 10px 0; }
+.chart-bar { flex: 1; display: flex; flex-direction: column; align-items: center; }
+.chart-bar .bar { width: 100%; background: linear-gradient(180deg, #667eea, #1890ff); border-radius: 4px 4px 0 0; min-height: 4px; position: relative; }
+.chart-bar .bar-label { font-size: 11px; color: #999; margin-top: 6px; }
+.chart-bar .bar-value { font-size: 11px; color: #666; margin-bottom: 4px; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>📊 弹幕风险筛查管理平台</h1>
+  <div class="nav">
+    <a href="admin.html">运营配置</a>
+    <a href="report.html" class="active">月度报告</a>
+  </div>
+</div>
+<div class="container">
+  <div class="select-bar">
+    <div>
+      <label style="margin-right: 8px; font-size: 14px;">选择客户：</label>
+      <select id="clientSelect" class="client-select" onchange="loadReport()"></select>
+    </div>
+    <div>
+      <label style="margin-right: 8px; font-size: 14px;">选择月份：</label>
+      <select id="monthSelect" class="month-select" onchange="loadReport()"></select>
+    </div>
+    <div>
+      <button class="btn btn-primary" onclick="window.print()">📄 导出报告</button>
+    </div>
+  </div>
+
+  <div class="report-header">
+    <h2 id="reportTitle">月度弹幕风险筛查报告</h2>
+    <div class="subtitle" id="reportSubtitle"></div>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="label">总调用量</div>
+      <div class="value highlight" id="statTotal">0</div>
+      <div class="trend">本月累计筛查弹幕数</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">风险命中数</div>
+      <div class="value warning" id="statRisky">0</div>
+      <div class="trend">命中风险规则的弹幕数</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">风险命中率</div>
+      <div class="value danger" id="statHitRate">0%</div>
+      <div class="trend">风险弹幕占总弹幕比例</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">人工确认率</div>
+      <div class="value success" id="statConfirmRate">0%</div>
+      <div class="trend">用户反馈占风险弹幕比例</div>
+    </div>
+  </div>
+
+  <div class="section-row">
+    <div class="card">
+      <div class="card-title">风险类别分布</div>
+      <div id="categoryBreakdown"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">风险等级分布</div>
+      <div id="levelDistribution"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">每日调用趋势</div>
+    <div id="trendChart" class="chart-container"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">典型风险弹幕样本</div>
+    <div id="sampleList"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">规则调整建议</div>
+    <div id="suggestions" style="color: #666; font-size: 14px; line-height: 1.8;">
+      <p>📌 <strong>基于本月数据的规则调整建议：</strong></p>
+      <ul id="suggestionList" style="margin-left: 24px; margin-top: 8px;">
+        <li>请先选择客户和月份查看报告数据</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<script>
+let currentClientId = null;
+
+async function api(url, options = {}) {
+  const res = await fetch(url, {
+    headers: { 'Content-Type': 'application/json' },
+    ...options,
+    body: options.body ? JSON.stringify(options.body) : undefined
+  });
+  return res.json();
+}
+
+async function loadClients() {
+  const res = await api('/api/admin/clients');
+  if (res.code === 200) {
+    const select = document.getElementById('clientSelect');
+    select.innerHTML = res.data.map(c => 
+      `<option value="${c.id}">${c.client_name}</option>`
+    ).join('');
+    
+    if (res.data.length > 0) {
+      currentClientId = res.data[0].id;
+    }
+  }
+}
+
+function initMonthSelect() {
+  const select = document.getElementById('monthSelect');
+  const now = new Date();
+  let options = '';
+  
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    const label = `${d.getFullYear()}年${d.getMonth() + 1}月`;
+    options += `<option value="${value}">${label}</option>`;
+  }
+  
+  select.innerHTML = options;
+}
+
+async function loadReport() {
+  currentClientId = parseInt(document.getElementById('clientSelect').value);
+  const monthStr = document.getElementById('monthSelect').value;
+  const [year, month] = monthStr.split('-').map(Number);
+  
+  const clientName = document.getElementById('clientSelect').selectedOptions[0].text;
+  document.getElementById('reportTitle').textContent = `${clientName} - 月度弹幕风险筛查报告`;
+  document.getElementById('reportSubtitle').textContent = `${year}年${month}月`;
+  
+  const statsRes = await api(`/api/report/stats/monthly/${currentClientId}?year=${year}&month=${month}`);
+  const trendRes = await api(`/api/report/stats/trend/${currentClientId}?days=30`);
+  
+  if (statsRes.code === 200) {
+    const data = statsRes.data;
+    
+    document.getElementById('statTotal').textContent = data.totalCalls.toLocaleString();
+    document.getElementById('statRisky').textContent = data.riskyCount.toLocaleString();
+    document.getElementById('statHitRate').textContent = data.hitRate + '%';
+    document.getElementById('statConfirmRate').textContent = data.manualConfirmRate + '%';
+    
+    renderCategoryBreakdown(data.categoryBreakdown);
+    renderLevelDistribution(data.riskLevelDistribution);
+    renderSamples(data.sampleDanmakus);
+    renderSuggestions(data);
+  }
+  
+  if (trendRes.code === 200) {
+    renderTrendChart(trendRes.data);
+  }
+}
+
+function renderCategoryBreakdown(data) {
+  const container = document.getElementById('categoryBreakdown');
+  if (!data || data.length === 0) {
+    container.innerHTML = '<div class="empty">暂无数据</div>';
+    return;
+  }
+  
+  const maxCount = Math.max(...data.map(d => d.hit_count));
+  
+  container.innerHTML = data.map(item => `
+    <div style="margin-bottom: 12px;">
+      <div style="display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 13px;">
+        <span>${item.category_name}</span>
+        <span style="color: #888;">${item.hit_count} 次</span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" style="width: ${(item.hit_count / maxCount * 100).toFixed(1)}%"></div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderLevelDistribution(data) {
+  const container = document.getElementById('levelDistribution');
+  if (!data || data.length === 0) {
+    container.innerHTML = '<div class="empty">暂无数据</div>';
+    return;
+  }
+  
+  const levelLabels = { 0: '无风险', 1: '低风险', 2: '中风险', 3: '高风险' };
+  const levelColors = { 0: '#52c41a', 1: '#1890ff', 2: '#fa8c16', 3: '#ff4d4f' };
+  
+  container.innerHTML = data.map(item => `
+    <div style="margin-bottom: 12px;">
+      <div style="display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 13px;">
+        <span><span class="badge badge-level-${item.risk_level}">${levelLabels[item.risk_level] || '未知'}</span></span>
+        <span style="color: #888;">${item.count} 条</span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" style="width: 100%; background: ${levelColors[item.risk_level] || '#999'}"></div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderTrendChart(data) {
+  const container = document.getElementById('trendChart');
+  if (!data || data.length === 0) {
+    container.innerHTML = '<div class="empty" style="width:100%;">暂无数据</div>';
+    return;
+  }
+  
+  const maxTotal = Math.max(...data.map(d => d.total), 1);
+  
+  container.innerHTML = data.slice().reverse().map(item => {
+    const height = (item.total / maxTotal * 100).toFixed(1);
+    const date = item.date ? item.date.slice(5) : '';
+    return `
+      <div class="chart-bar">
+        <div class="bar-value">${item.total}</div>
+        <div class="bar" style="height: ${Math.max(height, 2)}%"></div>
+        <div class="bar-label">${date}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderSamples(samples) {
+  const container = document.getElementById('sampleList');
+  if (!samples || samples.length === 0) {
+    container.innerHTML = '<div class="empty">暂无样本数据</div>';
+    return;
+  }
+  
+  const levelLabels = { 0: '无风险', 1: '低风险', 2: '中风险', 3: '高风险' };
+  
+  container.innerHTML = samples.map(item => {
+    let reasons = [];
+    try {
+      reasons = JSON.parse(item.hit_reasons || '[]');
+    } catch(e) {}
+    
+    return `
+      <div class="sample-item">
+        <div class="content">${item.content}</div>
+        <div class="meta">
+          <span><span class="badge badge-level-${item.risk_level}">${levelLabels[item.risk_level] || '未知'}</span></span>
+          <span>命中：${reasons.map(r => r.category).join('、') || '-'}</span>
+          <span>${item.timestamp}</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderSuggestions(data) {
+  const list = document.getElementById('suggestionList');
+  const suggestions = [];
+  
+  if (data.riskyCount > 0 && data.hitRate > 10) {
+    suggestions.push(`风险命中率较高（${data.hitRate}%），建议检查是否有误判，可适当放宽规则或增加白名单词汇`);
+  }
+  
+  if (data.riskyCount > 0 && data.hitRate < 1) {
+    suggestions.push(`风险命中率较低（${data.hitRate}%），建议补充更多风险关键词，扩大筛查覆盖范围`);
+  }
+  
+  if (data.manualConfirmRate > 20) {
+    suggestions.push(`人工确认率较高（${data.manualConfirmRate}%），说明用户反馈较多，建议优化规则减少误报`);
+  }
+  
+  if (data.categoryBreakdown && data.categoryBreakdown.length > 0) {
+    const topCategory = data.categoryBreakdown[0];
+    suggestions.push(`"${topCategory.category_name}"是最高发风险类别（${topCategory.hit_count}次），建议重点关注并优化该类别规则`);
+  }
+  
+  if (suggestions.length === 0) {
+    suggestions.push('本月数据平稳，建议继续保持现有规则，持续关注数据变化');
+  }
+  
+  list.innerHTML = suggestions.map(s => `<li>${s}</li>`).join('');
+}
+
+loadClients();
+initMonthSelect();
+setTimeout(loadReport, 200);
+</script>
+</body>
+</html>
