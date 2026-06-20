@@ -16,6 +16,7 @@ let data = {
   focus_words: [],
   danmaku_logs: [],
   false_positive_feedback: [],
+  debug_history: [],
   _counters: {
     clients: 0,
     risk_categories: 0,
@@ -23,9 +24,43 @@ let data = {
     whitelist: 0,
     focus_words: 0,
     danmaku_logs: 0,
-    false_positive_feedback: 0
+    false_positive_feedback: 0,
+    debug_history: 0
   }
 };
+
+function ensureDataStructure() {
+  const defaults = {
+    clients: [],
+    risk_categories: [],
+    risk_keywords: [],
+    whitelist: [],
+    focus_words: [],
+    danmaku_logs: [],
+    false_positive_feedback: [],
+    debug_history: [],
+    _counters: {
+      clients: 0,
+      risk_categories: 0,
+      risk_keywords: 0,
+      whitelist: 0,
+      focus_words: 0,
+      danmaku_logs: 0,
+      false_positive_feedback: 0,
+      debug_history: 0
+    }
+  };
+  Object.keys(defaults).forEach(key => {
+    if (data[key] === undefined) {
+      data[key] = defaults[key];
+    }
+  });
+  Object.keys(defaults._counters).forEach(key => {
+    if (data._counters[key] === undefined) {
+      data._counters[key] = defaults._counters[key];
+    }
+  });
+}
 
 function loadData() {
   if (fs.existsSync(dbFile)) {
@@ -36,6 +71,7 @@ function loadData() {
       console.error('读取数据库文件失败:', e.message);
     }
   }
+  ensureDataStructure();
 }
 
 function saveData() {
@@ -353,6 +389,9 @@ const falsePositiveFeedbackModel = {
       handled: 0,
       handled_by: null,
       handled_at: null,
+      handle_conclusion: null,
+      handle_action: null,
+      handle_action_detail: null,
       created_at: now()
     };
     data.false_positive_feedback.push(fb);
@@ -371,12 +410,19 @@ const falsePositiveFeedbackModel = {
     return list.slice(0, limit);
   },
 
-  markHandled(id, handledBy) {
+  getById(id) {
+    return data.false_positive_feedback.find(f => f.id === id);
+  },
+
+  markHandled(id, handledBy, conclusion, action, actionDetail) {
     const fb = data.false_positive_feedback.find(f => f.id === id);
     if (fb) {
       fb.handled = 1;
       fb.handled_by = handledBy || 'admin';
       fb.handled_at = now();
+      fb.handle_conclusion = conclusion || null;
+      fb.handle_action = action || null;
+      fb.handle_action_detail = actionDetail || null;
       saveData();
     }
     return { changes: fb ? 1 : 0 };
@@ -502,6 +548,46 @@ const statsModel = {
   }
 };
 
+const debugHistoryModel = {
+  create(clientId, inputDanmakus, results, remark) {
+    const id = nextId('debug_history');
+    const record = {
+      id,
+      client_id: clientId,
+      input_danmakus: inputDanmakus || [],
+      results: results || [],
+      remark: remark || '',
+      created_at: now()
+    };
+    data.debug_history.push(record);
+    if (data.debug_history.length > 200) {
+      data.debug_history = data.debug_history.slice(-100);
+    }
+    saveData();
+    return id;
+  },
+
+  getByClientId(clientId, limit = 50) {
+    return data.debug_history
+      .filter(d => d.client_id === clientId)
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+      .slice(0, limit);
+  },
+
+  getById(id) {
+    return data.debug_history.find(d => d.id === id);
+  },
+
+  remove(id) {
+    const index = data.debug_history.findIndex(d => d.id === id);
+    if (index > -1) {
+      data.debug_history.splice(index, 1);
+      saveData();
+    }
+    return { changes: index > -1 ? 1 : 0 };
+  }
+};
+
 function seedSampleData() {
   if (data.clients.length > 0) {
     console.log('已存在示例数据，跳过初始化');
@@ -583,5 +669,6 @@ module.exports = {
   focusWord: focusWordModel,
   danmakuLog: danmakuLogModel,
   falsePositiveFeedback: falsePositiveFeedbackModel,
-  stats: statsModel
+  stats: statsModel,
+  debugHistory: debugHistoryModel
 };

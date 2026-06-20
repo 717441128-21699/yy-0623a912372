@@ -213,4 +213,29 @@ router.delete('/focus-words/:id', (req, res) => {
   res.json({ code: 200, message: '删除成功', data: null });
 });
 
+router.get('/clients/:id/debug-history', (req, res) => {
+  const clientId = parseInt(req.params.id);
+  const limit = req.query.limit ? parseInt(req.query.limit) : 50;
+  const history = db.debugHistory.getByClientId(clientId, limit);
+  res.json({ code: 200, message: 'success', data: history });
+});
+
+router.post('/debug-history', (req, res) => {
+  const { client_id, input_danmakus, results, remark } = req.body;
+  
+  if (!client_id) {
+    return res.status(400).json({ code: 400, message: '缺少必要参数 client_id', data: null });
+  }
+  
+  const id = db.debugHistory.create(client_id, input_danmakus, results, remark);
+  const record = db.debugHistory.getById(id);
+  res.json({ code: 200, message: '保存成功', data: { id, record } });
+});
+
+router.delete('/debug-history/:id', (req, res) => {
+  const id = parseInt(req.params.id);
+  db.debugHistory.remove(id);
+  res.json({ code: 200, message: '删除成功', data: null });
+});
+
 module.exports = router;

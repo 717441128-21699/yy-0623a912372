@@ -74,6 +74,13 @@ tr:hover { background: #fafafa; }
 .action-btns { display: flex; gap: 6px; flex-wrap: wrap; }
 .inline-input { display: inline-block; width: auto; padding: 4px 8px; font-size: 12px; }
 .hint-text { color: #888; font-size: 12px; margin-top: 4px; }
+.history-item { padding: 12px; border-bottom: 1px solid #f0f0f0; cursor: pointer; }
+.history-item:hover { background: #fafafa; }
+.history-item .history-meta { display: flex; justify-content: space-between; font-size: 12px; color: #888; margin-bottom: 6px; }
+.history-item .history-content { font-size: 13px; color: #333; }
+.handle-detail { padding: 8px; background: #f9f9f9; border-radius: 4px; margin-top: 6px; font-size: 12px; color: #666; }
+.handle-detail .detail-row { margin-bottom: 4px; }
+.handle-detail .detail-label { font-weight: 500; color: #333; }
 </style>
 </head>
 <body>
@@ -199,6 +206,7 @@ tr:hover { background: #fafafa; }
               <th>反馈类型</th>
               <th>反馈原因</th>
               <th>状态</th>
+              <th>处理详情</th>
               <th>反馈时间</th>
               <th>操作</th>
             </tr>
@@ -240,20 +248,38 @@ tr:hover { background: #fafafa; }
         </div>
         <div class="test-area">
           <div style="color: #666; font-size: 13px; margin-bottom: 12px;">
-            输入弹幕内容，测试当前客户的风险规则配置效果。修改规则后可立即在此验证，无需调用外部系统。
+            输入弹幕内容，测试当前客户的风险规则配置效果。修改规则后可立即在此验证，无需调用外部系统。测试内容不会进入正式记录和月报统计。
           </div>
           <div class="form-group">
             <label>当前客户</label>
             <div id="testClientInfo" style="padding: 8px 0; font-weight: 500;"></div>
           </div>
-          <div class="form-group">
-            <label>弹幕内容</label>
-            <textarea id="testContent" rows="4" placeholder="请输入要测试的弹幕内容，可一次输入多条，每行一条"></textarea>
-            <div class="hint-text">提示：可一次输入多条弹幕进行批量测试，每行一条</div>
+          <div class="form-row">
+            <div class="form-group" style="flex: 3;">
+              <label>弹幕内容</label>
+              <textarea id="testContent" rows="4" placeholder="请输入要测试的弹幕内容，可一次输入多条，每行一条"></textarea>
+              <div class="hint-text">提示：可一次输入多条弹幕进行批量测试，每行一条</div>
+            </div>
+            <div class="form-group" style="flex: 1;">
+              <label>备注（可选）</label>
+              <input type="text" id="testRemark" placeholder="如：调整虚假功效规则后对比测试">
+              <div class="hint-text">保存调试历史时会带上备注</div>
+            </div>
           </div>
-          <button class="btn btn-primary" onclick="runTest()">运行测试</button>
+          <div style="display: flex; gap: 8px;">
+            <button class="btn btn-primary" onclick="runTest()">运行测试</button>
+            <button class="btn btn-default" onclick="saveDebugHistory()">💾 保存本次测试</button>
+            <button class="btn btn-default" onclick="clearTestResult()">清空结果</button>
+          </div>
         </div>
         <div id="testResult" style="margin-top: 16px;"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">
+          <span>📋 调试历史</span>
+          <button class="btn btn-default btn-small" onclick="loadDebugHistory()">🔄 刷新</button>
+        </div>
+        <div id="debugHistoryList"></div>
       </div>
     </div>
   </div>
@@ -267,16 +293,24 @@ let currentClientKey = null;
 let currentMenu = 'clients';
 let currentFeedbackTab = 'pending';
 let clientsData = [];
+let lastTestResults = null;
+let lastTestInputs = null;
+
+const STORAGE_KEY_CLIENT = 'danmaku_risk_current_client_id';
 
 function escapeHtml(text) {
   if (text === null || text === undefined) return '';
   const div = document.createElement('div');
-  div.textContent = text;
+  div.textContent = String(text);
   return div.innerHTML;
 }
 
 function renderText(text) {
-  return escapeHtml(String(text));
+  return escapeHtml(text);
+}
+
+function safeTitle(text) {
+  return escapeHtml(text).replace(/"/g, '&quot;');
 }
 
 async function api(url, options = {}) {
@@ -288,17 +322,29 @@ async function api(url, options = {}) {
   return res.json();
 }
 
+function saveCurrentClientToStorage() {
+  try {
+    if (currentClientId) {
+      localStorage.setItem(STORAGE_KEY_CLIENT, String(currentClientId));
+    }
+  } catch (e) {}
+}
+
+function loadCurrentClientFromStorage() {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY_CLIENT);
+    if (stored) {
+      return parseInt(stored);
+    }
+  } catch (e) {}
+  return null;
+}
+
 function refreshClientSelect() {
   const select = document.getElementById('clientSelect');
-  const prevValue = select.value;
-  
   select.innerHTML = clientsData.map(c => 
-    `<option value="${c.id}" ${c.id == currentClientId ? 'selected' : ''}>${renderText(c.client_name)} (${renderText(c.client_key)})</option>`
+    `<option value="${c.id}" ${c.id === currentClientId ? 'selected' : ''}>${renderText(c.client_name)} (${renderText(c.client_key)})</option>`
   ).join('');
-  
-  if (prevValue && clientsData.find(c => c.id == prevValue)) {
-    select.value = prevValue;
-  }
 }
 
 function updateCurrentClientInfo() {
@@ -307,16 +353,41 @@ function updateCurrentClientInfo() {
     currentClientKey = client.client_key;
     const info = document.getElementById('testClientInfo');
     if (info) {
-      info.innerHTML = `<span class="badge badge-level-1">${renderText(client.client_name)}</span> <span style="margin-left: 8px; color: #888;">Key: ${renderText(client.client_key)}</span>`;
+      info.innerHTML = `<span class="badge badge-level-1">${renderText(client.client_name)}</span> <span style="margin-left: 8px; color: #888;">Key: ${renderText(client.client_key)}</span> <span class="badge ${client.status === 1 ? 'badge-level-1' : 'badge-pending'}" style="margin-left: 8px;">${client.status === 1 ? '正常' : '停用'}</span>`;
     }
   }
+}
+
+function setCurrentClient(clientId, saveToStorage = true) {
+  if (!clientsData.find(c => c.id === clientId)) {
+    if (clientsData.length > 0) {
+      clientId = clientsData[0].id;
+    } else {
+      clientId = null;
+    }
+  }
+  
+  currentClientId = clientId;
+  if (saveToStorage) saveCurrentClientToStorage();
+  updateCurrentClientInfo();
+  refreshClientSelect();
 }
 
 async function loadClients() {
   const res = await api('/api/admin/clients');
   if (res.code === 200) {
     clientsData = res.data;
+    
+    let storedId = loadCurrentClientFromStorage();
+    if (storedId && clientsData.find(c => c.id === storedId)) {
+      currentClientId = storedId;
+    } else if (clientsData.length > 0) {
+      currentClientId = clientsData[0].id;
+    }
+    
     refreshClientSelect();
+    updateCurrentClientInfo();
+    saveCurrentClientToStorage();
     
     const tbody = document.getElementById('clientTableBody');
     const typeMap = { catchphrase: '口头禅', brand: '品牌黑称', event: '活动专属词', common: '通用' };
@@ -334,29 +405,19 @@ async function loadClients() {
         </td>
       </tr>
     `).join('');
-
-    if (res.data.length > 0 && !currentClientId) {
-      currentClientId = res.data[0].id;
-      updateCurrentClientInfo();
-    }
-    
-    if (currentClientId) {
-      refreshClientSelect();
-      updateCurrentClientInfo();
-    }
   }
 }
 
 function switchClient() {
-  currentClientId = parseInt(document.getElementById('clientSelect').value);
-  updateCurrentClientInfo();
+  const newId = parseInt(document.getElementById('clientSelect').value);
+  setCurrentClient(newId);
   
   if (currentMenu === 'categories') loadCategories();
   else if (currentMenu === 'whitelist') loadWhitelist();
   else if (currentMenu === 'focus') loadFocusWords();
   else if (currentMenu === 'feedback') loadFeedback();
   else if (currentMenu === 'danmakus') loadDanmakus();
-  else if (currentMenu === 'test') clearTestResult();
+  else if (currentMenu === 'test') { clearTestResult(); loadDebugHistory(); }
 }
 
 function switchMenu(menu) {
@@ -374,7 +435,7 @@ function switchMenu(menu) {
   else if (menu === 'focus') loadFocusWords();
   else if (menu === 'feedback') loadFeedback();
   else if (menu === 'danmakus') loadDanmakus();
-  else if (menu === 'test') updateCurrentClientInfo();
+  else if (menu === 'test') { updateCurrentClientInfo(); loadDebugHistory(); }
 }
 
 document.querySelectorAll('.menu-item').forEach(el => {
@@ -397,6 +458,7 @@ async function loadCategories() {
             <span class="category-name">${renderText(cat.category_name)}</span>
             <span class="badge badge-level-${cat.risk_level}">${cat.risk_level === 3 ? '高风险' : cat.risk_level === 2 ? '中风险' : '低风险'}</span>
             <span style="margin-left: 8px; color: #999; font-size: 12px;">编码: ${renderText(cat.category_code)}</span>
+            ${cat.status === 0 ? '<span class="badge badge-pending" style="margin-left: 8px;">已停用</span>' : ''}
           </div>
           <div class="action-btns">
             <button class="btn btn-default btn-small" onclick="showEditCategoryModal(${cat.id})">编辑</button>
@@ -408,7 +470,7 @@ async function loadCategories() {
         <div style="color: #888; font-size: 12px; margin-bottom: 8px;">建议动作：${renderText(cat.suggestion || '无')}</div>
         <div>
           ${(cat.keywords || []).map(kw => `
-            <span class="keyword-tag">
+            <span class="keyword-tag" title="${safeTitle(kw.keyword)} (${kw.match_type}, 权重${kw.weight})">
               ${renderText(kw.keyword)}
               <span class="remove" onclick="deleteKeyword(${kw.id})">×</span>
             </span>
@@ -431,9 +493,9 @@ async function loadWhitelist() {
     const typeMap = { catchphrase: '口头禅', brand: '品牌黑称', event: '活动专属词', common: '通用' };
     tbody.innerHTML = res.data.map(item => `
       <tr>
-        <td><strong>${renderText(item.word)}</strong></td>
+        <td><strong title="${safeTitle(item.word)}">${renderText(item.word)}</strong></td>
         <td>${renderText(typeMap[item.word_type] || item.word_type)}</td>
-        <td>${renderText(item.reason || '-')}</td>
+        <td title="${safeTitle(item.reason || '-')}">${renderText(item.reason || '-')}</td>
         <td>${renderText(item.created_by || '-')}</td>
         <td>${renderText(item.created_at)}</td>
         <td><button class="btn btn-danger btn-small" onclick="deleteWhitelist(${item.id})">删除</button></td>
@@ -453,9 +515,9 @@ async function loadFocusWords() {
     }
     tbody.innerHTML = res.data.map(item => `
       <tr>
-        <td><strong>${renderText(item.word)}</strong></td>
+        <td><strong title="${safeTitle(item.word)}">${renderText(item.word)}</strong></td>
         <td><span class="badge badge-level-${item.focus_level}">${item.focus_level}级</span></td>
-        <td>${renderText(item.reason || '-')}</td>
+        <td title="${safeTitle(item.reason || '-')}">${renderText(item.reason || '-')}</td>
         <td>${renderText(item.created_by || '-')}</td>
         <td>${renderText(item.created_at)}</td>
         <td><button class="btn btn-danger btn-small" onclick="deleteFocusWord(${item.id})">删除</button></td>
@@ -474,27 +536,47 @@ async function loadFeedback() {
   if (res.code === 200) {
     const tbody = document.getElementById('feedbackTableBody');
     if (res.data.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="6" class="empty">暂无反馈记录</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="7" class="empty">暂无反馈记录</td></tr>';
       return;
     }
-    tbody.innerHTML = res.data.map(item => `
+    tbody.innerHTML = res.data.map(item => {
+      let handleDetail = '';
+      if (item.handled) {
+        const actionLabel = { whitelist: '加入白名单', focus: '加入关注词', manual: '人工标记处理', other: '其他处理' };
+        const actionText = item.handle_action ? actionLabel[item.handle_action] || item.handle_action : '-';
+        const detailText = item.handle_action_detail ? renderText(item.handle_action_detail) : '-';
+        handleDetail = `
+          <div class="handle-detail">
+            <div class="detail-row"><span class="detail-label">处理人：</span>${renderText(item.handled_by || '-')}</div>
+            <div class="detail-row"><span class="detail-label">处理时间：</span>${renderText(item.handled_at || '-')}</div>
+            <div class="detail-row"><span class="detail-label">处理动作：</span>${actionText}</div>
+            ${item.handle_action_detail ? `<div class="detail-row"><span class="detail-label">操作词汇：</span>${detailText}</div>` : ''}
+            ${item.handle_conclusion ? `<div class="detail-row"><span class="detail-label">处理结论：</span>${renderText(item.handle_conclusion)}</div>` : ''}
+          </div>
+        `;
+      } else {
+        handleDetail = '<span style="color: #999; font-size: 12px;">待处理</span>';
+      }
+      
+      return `
       <tr>
-        <td class="danmaku-content" title="${renderText(item.content || '-')}">${renderText(item.content || '-')}</td>
+        <td class="danmaku-content" title="${safeTitle(item.content || '-')}">${renderText(item.content || '-')}</td>
         <td>${renderText(item.feedback_type)}</td>
-        <td class="danmaku-content" title="${renderText(item.reason || '-')}">${renderText(item.reason || '-')}</td>
+        <td class="danmaku-content" title="${safeTitle(item.reason || '-')}">${renderText(item.reason || '-')}</td>
         <td>${item.handled ? '<span class="badge badge-handled">已处理</span>' : '<span class="badge badge-pending">待处理</span>'}</td>
+        <td>${handleDetail}</td>
         <td>${renderText(item.created_at)}</td>
         <td>
           <div class="action-btns">
             ${!item.handled ? `
-              <button class="btn btn-default btn-small" onclick="showQuickAddWhitelistModal(${item.id}, ${JSON.stringify(renderText(item.content || '')).replace(/\"/g, '&quot;')})">+ 白名单</button>
-              <button class="btn btn-default btn-small" onclick="showQuickAddFocusModal(${item.id}, ${JSON.stringify(renderText(item.content || '')).replace(/\"/g, '&quot;')})">+ 关注词</button>
-              <button class="btn btn-primary btn-small" onclick="handleFeedback(${item.id})">标记处理</button>
-            ` : renderText(item.handled_by || '已处理')}
+              <button class="btn btn-default btn-small" onclick='showQuickAddWhitelistModal(${JSON.stringify({ id: item.id, content: item.content || '' })})'>+ 白名单</button>
+              <button class="btn btn-default btn-small" onclick='showQuickAddFocusModal(${JSON.stringify({ id: item.id, content: item.content || '' })})'>+ 关注词</button>
+              <button class="btn btn-primary btn-small" onclick="showHandleFeedbackModal(${item.id})">处理</button>
+            ` : '<button class="btn btn-default btn-small" onclick="viewFeedbackDetail(' + item.id + ')">查看</button>'}
           </div>
         </td>
       </tr>
-    `).join('');
+    `}).join('');
   }
 }
 
@@ -523,11 +605,11 @@ async function loadDanmakus(type = 'all') {
       const reasons = (item.hit_reasons || []).map(r => renderText(r.description)).join('; ');
       return `
       <tr>
-        <td class="danmaku-content" title="${renderText(item.content)}">${renderText(item.content)}</td>
+        <td class="danmaku-content" title="${safeTitle(item.content)}">${renderText(item.content)}</td>
         <td>${renderText(item.room_id || '-')}</td>
         <td>${renderText(item.anchor_id || '-')}</td>
         <td><span class="badge badge-level-${item.risk_level}">${renderText(item.risk_level_label)}</span></td>
-        <td class="danmaku-content" title="${reasons}">${reasons || '-'}</td>
+        <td class="danmaku-content" title="${safeTitle(reasons)}">${reasons || '-'}</td>
         <td>${renderText(item.timestamp)}</td>
       </tr>
     `}).join('');
@@ -593,9 +675,9 @@ async function addClient() {
   
   if (res.code === 200) {
     closeModal();
-    currentClientId = res.data.client.id;
-    currentClientKey = res.data.client.client_key;
-    loadClients();
+    await loadClients();
+    setCurrentClient(res.data.client.id);
+    alert('客户添加成功，已自动切换到新客户');
   } else {
     alert(res.message);
   }
@@ -662,7 +744,10 @@ async function saveEditClient() {
   
   if (res.code === 200) {
     closeModal();
-    loadClients();
+    await loadClients();
+    if (id === currentClientId) {
+      updateCurrentClientInfo();
+    }
   } else {
     alert(res.message);
   }
@@ -1064,12 +1149,14 @@ async function addFocusWord() {
   }
 }
 
-function showQuickAddWhitelistModal(feedbackId, content) {
+function showQuickAddWhitelistModal(params) {
+  const feedbackId = params.id;
+  const content = params.content || '';
   showModal(`
-    <div class="modal-title">加入白名单</div>
+    <div class="modal-title">加入白名单并处理反馈</div>
     <div class="form-group">
       <label>弹幕内容</label>
-      <div style="padding: 8px 12px; background: #f5f5f5; border-radius: 4px; font-size: 13px; word-break: break-all;">${content}</div>
+      <div style="padding: 8px 12px; background: #f5f5f5; border-radius: 4px; font-size: 13px; word-break: break-all;">${renderText(content)}</div>
     </div>
     <div class="form-group">
       <label>选择要加入白名单的词 *</label>
@@ -1089,6 +1176,10 @@ function showQuickAddWhitelistModal(feedbackId, content) {
       <label>添加原因</label>
       <textarea id="quickWhitelistReason" rows="2" placeholder="来自误报反馈，用户认为该内容不属于风险"></textarea>
     </div>
+    <div class="form-group">
+      <label>处理结论</label>
+      <textarea id="quickWhitelistConclusion" rows="2" placeholder="请填写处理结论，如：经核实为品牌正常宣传，不属于风险内容"></textarea>
+    </div>
     <input type="hidden" id="quickFeedbackId" value="${feedbackId}">
     <div class="modal-footer">
       <button class="btn btn-default" onclick="closeModal()">取消</button>
@@ -1101,6 +1192,7 @@ async function quickAddWhitelist() {
   const word = document.getElementById('quickWhitelistWord').value.trim();
   const type = document.getElementById('quickWhitelistType').value;
   const reason = document.getElementById('quickWhitelistReason').value.trim();
+  const conclusion = document.getElementById('quickWhitelistConclusion').value.trim();
   const feedbackId = parseInt(document.getElementById('quickFeedbackId').value);
   
   if (!word) {
@@ -1108,13 +1200,23 @@ async function quickAddWhitelist() {
     return;
   }
   
+  const typeMap = { catchphrase: '口头禅', brand: '品牌黑称', event: '活动专属词', common: '通用' };
+  
   const res = await api('/api/admin/whitelist', {
     method: 'POST',
     body: { client_id: currentClientId, word, word_type: type, reason }
   });
   
   if (res.code === 200) {
-    await api(`/api/report/feedback/${feedbackId}/handle`, { method: 'POST', body: { handled_by: 'admin' } });
+    await api(`/api/report/feedback/${feedbackId}/handle`, { 
+      method: 'POST', 
+      body: { 
+        handled_by: 'admin', 
+        conclusion: conclusion,
+        action: 'whitelist',
+        action_detail: `${typeMap[type] || type}: ${word}`
+      } 
+    });
     closeModal();
     loadFeedback();
     alert('已成功加入白名单并标记反馈为已处理');
@@ -1123,12 +1225,14 @@ async function quickAddWhitelist() {
   }
 }
 
-function showQuickAddFocusModal(feedbackId, content) {
+function showQuickAddFocusModal(params) {
+  const feedbackId = params.id;
+  const content = params.content || '';
   showModal(`
-    <div class="modal-title">加入重点关注词</div>
+    <div class="modal-title">加入重点关注词并处理反馈</div>
     <div class="form-group">
       <label>弹幕内容</label>
-      <div style="padding: 8px 12px; background: #f5f5f5; border-radius: 4px; font-size: 13px; word-break: break-all;">${content}</div>
+      <div style="padding: 8px 12px; background: #f5f5f5; border-radius: 4px; font-size: 13px; word-break: break-all;">${renderText(content)}</div>
     </div>
     <div class="form-group">
       <label>选择要重点关注的词 *</label>
@@ -1147,6 +1251,10 @@ function showQuickAddFocusModal(feedbackId, content) {
       <label>原因</label>
       <textarea id="quickFocusReason" rows="2" placeholder="来自误报反馈，需要重点关注该词汇"></textarea>
     </div>
+    <div class="form-group">
+      <label>处理结论</label>
+      <textarea id="quickFocusConclusion" rows="2" placeholder="请填写处理结论"></textarea>
+    </div>
     <input type="hidden" id="quickFocusFeedbackId" value="${feedbackId}">
     <div class="modal-footer">
       <button class="btn btn-default" onclick="closeModal()">取消</button>
@@ -1159,6 +1267,7 @@ async function quickAddFocus() {
   const word = document.getElementById('quickFocusWord').value.trim();
   const level = parseInt(document.getElementById('quickFocusLevel').value);
   const reason = document.getElementById('quickFocusReason').value.trim();
+  const conclusion = document.getElementById('quickFocusConclusion').value.trim();
   const feedbackId = parseInt(document.getElementById('quickFocusFeedbackId').value);
   
   if (!word) {
@@ -1172,13 +1281,128 @@ async function quickAddFocus() {
   });
   
   if (res.code === 200) {
-    await api(`/api/report/feedback/${feedbackId}/handle`, { method: 'POST', body: { handled_by: 'admin' } });
+    await api(`/api/report/feedback/${feedbackId}/handle`, { 
+      method: 'POST', 
+      body: { 
+        handled_by: 'admin', 
+        conclusion: conclusion,
+        action: 'focus',
+        action_detail: `${level}级关注: ${word}`
+      } 
+    });
     closeModal();
     loadFeedback();
     alert('已成功加入重点关注词并标记反馈为已处理');
   } else {
     alert(res.message);
   }
+}
+
+function showHandleFeedbackModal(feedbackId) {
+  showModal(`
+    <div class="modal-title">处理反馈</div>
+    <div class="form-group">
+      <label>处理动作</label>
+      <select id="handleAction">
+        <option value="manual">人工标记处理</option>
+        <option value="other">其他</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>处理结论</label>
+      <textarea id="handleConclusion" rows="3" placeholder="请填写处理结论"></textarea>
+    </div>
+    <input type="hidden" id="handleFeedbackId" value="${feedbackId}">
+    <div class="modal-footer">
+      <button class="btn btn-default" onclick="closeModal()">取消</button>
+      <button class="btn btn-primary" onclick="handleFeedback()">确认处理</button>
+    </div>
+  `);
+}
+
+async function handleFeedback() {
+  const id = parseInt(document.getElementById('handleFeedbackId').value);
+  const action = document.getElementById('handleAction').value;
+  const conclusion = document.getElementById('handleConclusion').value.trim();
+  
+  const res = await api(`/api/report/feedback/${id}/handle`, { 
+    method: 'POST', 
+    body: { 
+      handled_by: 'admin', 
+      conclusion, 
+      action 
+    } 
+  });
+  if (res.code === 200) {
+    closeModal();
+    loadFeedback();
+  }
+}
+
+function viewFeedbackDetail(id) {
+  api(`/api/report/clients/${currentClientId}/feedback?handled=`).then(res => {
+    if (res.code !== 200) return;
+    const item = res.data.find(f => f.id === id);
+    if (!item) return;
+    
+    const actionLabel = { whitelist: '加入白名单', focus: '加入关注词', manual: '人工标记处理', other: '其他处理' };
+    const actionText = item.handle_action ? actionLabel[item.handle_action] || item.handle_action : '-';
+    
+    showModal(`
+      <div class="modal-title">反馈详情</div>
+      <div class="form-group">
+        <label>弹幕内容</label>
+        <div style="padding: 8px 12px; background: #f5f5f5; border-radius: 4px; word-break: break-all;">${renderText(item.content || '-')}</div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>反馈类型</label>
+          <div>${renderText(item.feedback_type)}</div>
+        </div>
+        <div class="form-group">
+          <label>反馈时间</label>
+          <div>${renderText(item.created_at)}</div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>反馈原因</label>
+        <div style="padding: 8px 12px; background: #f5f5f5; border-radius: 4px;">${renderText(item.reason || '-')}</div>
+      </div>
+      <div class="form-group">
+        <label>处理状态</label>
+        <div>${item.handled ? '<span class="badge badge-handled">已处理</span>' : '<span class="badge badge-pending">待处理</span>'}</div>
+      </div>
+      ${item.handled ? `
+        <div class="form-row">
+          <div class="form-group">
+            <label>处理人</label>
+            <div>${renderText(item.handled_by || '-')}</div>
+          </div>
+          <div class="form-group">
+            <label>处理时间</label>
+            <div>${renderText(item.handled_at || '-')}</div>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>处理动作</label>
+            <div>${actionText}</div>
+          </div>
+          <div class="form-group">
+            <label>操作词汇</label>
+            <div>${renderText(item.handle_action_detail || '-')}</div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>处理结论</label>
+          <div style="padding: 8px 12px; background: #f5f5f5; border-radius: 4px;">${renderText(item.handle_conclusion || '-')}</div>
+        </div>
+      ` : ''}
+      <div class="modal-footer">
+        <button class="btn btn-default" onclick="closeModal()">关闭</button>
+      </div>
+    `);
+  });
 }
 
 async function deleteKeyword(id) {
@@ -1212,18 +1436,13 @@ async function deleteClient(id) {
     currentClientId = null;
     currentClientKey = null;
   }
-  loadClients();
-}
-
-async function handleFeedback(id) {
-  const res = await api(`/api/report/feedback/${id}/handle`, { method: 'POST', body: { handled_by: 'admin' } });
-  if (res.code === 200) {
-    loadFeedback();
-  }
+  await loadClients();
 }
 
 function clearTestResult() {
   document.getElementById('testResult').innerHTML = '';
+  lastTestResults = null;
+  lastTestInputs = null;
 }
 
 async function runTest() {
@@ -1240,7 +1459,9 @@ async function runTest() {
   
   const lines = content.split('\n').map(l => l.trim()).filter(l => l);
   const container = document.getElementById('testResult');
-  container.innerHTML = '<div class="card-title" style="margin-bottom: 12px;">测试结果</div>';
+  container.innerHTML = '<div class="card-title" style="margin-bottom: 12px;">测试结果（仅调试，不计入正式数据）</div>';
+  
+  const results = [];
   
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
@@ -1250,11 +1471,14 @@ async function runTest() {
         client_key: currentClientKey,
         content: line,
         room_id: 'test_room',
-        anchor_id: 'test_anchor'
+        anchor_id: 'test_anchor',
+        debug_mode: true
       }
     });
     
     const d = res.data;
+    results.push({ content: line, result: d });
+    
     const reasonsHtml = (d.hit_reasons || []).map(r => 
       `<div style="margin-left: 16px; font-size: 12px; color: #666;">• ${renderText(r.description)}</div>`
     ).join('');
@@ -1287,6 +1511,125 @@ async function runTest() {
       </div>
     `;
   }
+  
+  lastTestInputs = lines;
+  lastTestResults = results;
+}
+
+async function saveDebugHistory() {
+  if (!lastTestResults || !lastTestInputs) {
+    alert('请先运行测试');
+    return;
+  }
+  
+  const remark = document.getElementById('testRemark').value.trim();
+  
+  const res = await api('/api/admin/debug-history', {
+    method: 'POST',
+    body: {
+      client_id: currentClientId,
+      input_danmakus: lastTestInputs,
+      results: lastTestResults,
+      remark
+    }
+  });
+  
+  if (res.code === 200) {
+    alert('测试记录已保存');
+    loadDebugHistory();
+  } else {
+    alert('保存失败: ' + res.message);
+  }
+}
+
+async function loadDebugHistory() {
+  if (!currentClientId) return;
+  const res = await api(`/api/admin/clients/${currentClientId}/debug-history?limit=30`);
+  const container = document.getElementById('debugHistoryList');
+  
+  if (res.code !== 200 || res.data.length === 0) {
+    container.innerHTML = '<div class="empty">暂无调试历史，运行测试并保存后将显示在这里</div>';
+    return;
+  }
+  
+  container.innerHTML = res.data.map(item => {
+    const riskyCount = (item.results || []).filter(r => r.result && r.result.is_risky).length;
+    const totalCount = (item.results || []).length;
+    return `
+      <div class="history-item" onclick="loadHistoryToTest(${item.id})">
+        <div class="history-meta">
+          <span>
+            ${item.remark ? `<strong>${renderText(item.remark)}</strong> · ` : ''}
+            ${totalCount} 条弹幕，命中 ${riskyCount} 条
+          </span>
+          <span>${renderText(item.created_at)}
+            <button class="btn btn-danger btn-small" onclick="event.stopPropagation(); deleteDebugHistory(${item.id})" style="margin-left: 8px;">删除</button>
+          </span>
+        </div>
+        <div class="history-content">
+          ${(item.input_danmakus || []).slice(0, 3).map(d => renderText(d)).join(' | ')}
+          ${(item.input_danmakus || []).length > 3 ? ` 等 ${item.input_danmakus.length} 条...` : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function deleteDebugHistory(id) {
+  if (!confirm('确认删除此调试记录？')) return;
+  await api(`/api/admin/debug-history/${id}`, { method: 'DELETE' });
+  loadDebugHistory();
+}
+
+function loadHistoryToTest(id) {
+  api(`/api/admin/clients/${currentClientId}/debug-history?limit=30`).then(res => {
+    if (res.code !== 200) return;
+    const item = res.data.find(h => h.id === id);
+    if (!item) return;
+    
+    document.getElementById('testContent').value = (item.input_danmakus || []).join('\n');
+    document.getElementById('testRemark').value = item.remark || '';
+    
+    const container = document.getElementById('testResult');
+    container.innerHTML = '<div class="card-title" style="margin-bottom: 12px;">历史测试结果（点击「运行测试」可使用当前规则重新验证）</div>';
+    
+    (item.results || []).forEach(item2 => {
+      const line = item2.content;
+      const d = item2.result;
+      
+      const reasonsHtml = (d.hit_reasons || []).map(r => 
+        `<div style="margin-left: 16px; font-size: 12px; color: #666;">• ${renderText(r.description)}</div>`
+      ).join('');
+      
+      const catsHtml = (d.risk_categories || []).map(c => 
+        `<span class="badge badge-level-${c.level}" style="margin-right: 4px;">${renderText(c.name)}</span>`
+      ).join('');
+      
+      const suggestionsHtml = d.suggestions && d.suggestions.length > 0 
+        ? `<div style="margin-top: 6px; font-size: 12px; color: #fa8c16;">💡 建议: ${renderText(d.suggestions.join('; '))}</div>`
+        : '';
+      
+      container.innerHTML += `
+        <div class="test-result-item">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px;">
+            <div>
+              <span style="font-weight: 500;">${renderText(line)}</span>
+            </div>
+            <span class="badge badge-level-${d.risk_level}">${renderText(d.risk_level_label)}</span>
+          </div>
+          ${d.is_risky ? `
+            <div style="margin-bottom: 6px;">${catsHtml}</div>
+            ${reasonsHtml}
+            ${suggestionsHtml}
+          ` : `
+            <div style="font-size: 12px; color: #888;">
+              ${d.whitelisted ? '✅ 白名单命中，已放行' : '✅ 无风险'}
+            </div>
+          `}
+        </div>
+      `;
+    });
+  });
 }
 
 loadClients();

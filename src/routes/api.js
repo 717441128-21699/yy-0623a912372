@@ -4,7 +4,7 @@ const db = require('../db');
 const riskEngine = require('../services/riskEngine');
 
 router.post('/screen', (req, res) => {
-  const { client_key, content, room_id, anchor_id, timestamp } = req.body;
+  const { client_key, content, room_id, anchor_id, timestamp, debug_mode } = req.body;
 
   if (!client_key || !content) {
     return res.status(400).json({
@@ -33,20 +33,22 @@ router.post('/screen', (req, res) => {
 
   const result = riskEngine.screenDanmaku(client.id, content);
 
-  const danmakuTimestamp = timestamp || new Date().toISOString();
+  if (!debug_mode) {
+    const danmakuTimestamp = timestamp || new Date().toISOString();
 
-  db.danmakuLog.create(
-    client.id,
-    room_id || null,
-    anchor_id || null,
-    content,
-    danmakuTimestamp,
-    result.riskLevel,
-    result.categories,
-    result.hitReasons,
-    result.suggestions,
-    result.isRisky
-  );
+    db.danmakuLog.create(
+      client.id,
+      room_id || null,
+      anchor_id || null,
+      content,
+      danmakuTimestamp,
+      result.riskLevel,
+      result.categories,
+      result.hitReasons,
+      result.suggestions,
+      result.isRisky
+    );
+  }
 
   res.json({
     code: 200,

@@ -141,16 +141,40 @@ tr:hover { background: #fafafa; }
 
 <script>
 let currentClientId = null;
+let clientsData = [];
+const STORAGE_KEY_CLIENT = 'danmaku_risk_current_client_id';
 
 function escapeHtml(text) {
   if (text === null || text === undefined) return '';
   const div = document.createElement('div');
-  div.textContent = text;
+  div.textContent = String(text);
   return div.innerHTML;
 }
 
 function renderText(text) {
-  return escapeHtml(String(text));
+  return escapeHtml(text);
+}
+
+function safeTitle(text) {
+  return escapeHtml(text).replace(/"/g, '&quot;');
+}
+
+function saveCurrentClientToStorage() {
+  try {
+    if (currentClientId) {
+      localStorage.setItem(STORAGE_KEY_CLIENT, String(currentClientId));
+    }
+  } catch (e) {}
+}
+
+function loadCurrentClientFromStorage() {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY_CLIENT);
+    if (stored) {
+      return parseInt(stored);
+    }
+  } catch (e) {}
+  return null;
 }
 
 async function api(url, options = {}) {
@@ -165,14 +189,19 @@ async function api(url, options = {}) {
 async function loadClients() {
   const res = await api('/api/admin/clients');
   if (res.code === 200) {
+    clientsData = res.data;
     const select = document.getElementById('clientSelect');
-    select.innerHTML = res.data.map(c => 
-      `<option value="${c.id}">${renderText(c.client_name)}</option>`
-    ).join('');
     
-    if (res.data.length > 0) {
-      currentClientId = res.data[0].id;
+    let storedId = loadCurrentClientFromStorage();
+    if (storedId && clientsData.find(c => c.id === storedId)) {
+      currentClientId = storedId;
+    } else if (clientsData.length > 0) {
+      currentClientId = clientsData[0].id;
     }
+    
+    select.innerHTML = clientsData.map(c => 
+      `<option value="${c.id}" ${c.id === currentClientId ? 'selected' : ''}>${renderText(c.client_name)}</option>`
+    ).join('');
   }
 }
 
@@ -193,6 +222,7 @@ function initMonthSelect() {
 
 async function loadReport() {
   currentClientId = parseInt(document.getElementById('clientSelect').value);
+  saveCurrentClientToStorage();
   const monthStr = document.getElementById('monthSelect').value;
   const [year, month] = monthStr.split('-').map(Number);
   

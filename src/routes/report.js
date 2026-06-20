@@ -16,10 +16,12 @@ router.get('/clients/:clientId/feedback', (req, res) => {
 
 router.post('/feedback/:id/handle', (req, res) => {
   const id = parseInt(req.params.id);
-  const { handled_by } = req.body;
+  const { handled_by, conclusion, action, action_detail } = req.body;
   
-  db.falsePositiveFeedback.markHandled(id, handled_by || 'admin');
-  res.json({ code: 200, message: '已标记为已处理', data: null });
+  db.falsePositiveFeedback.markHandled(id, handled_by || 'admin', conclusion, action, action_detail);
+  
+  const updated = db.falsePositiveFeedback.getById(id);
+  res.json({ code: 200, message: '已标记为已处理', data: updated || null });
 });
 
 router.get('/stats/monthly/:clientId', (req, res) => {
