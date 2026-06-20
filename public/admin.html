@@ -54,6 +54,7 @@ tr:hover { background: #fafafa; }
 .modal-title { font-size: 18px; font-weight: 600; margin-bottom: 20px; }
 .modal-footer { display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px; padding-top: 16px; border-top: 1px solid #f0f0f0; }
 .category-section { margin-bottom: 20px; padding: 16px; background: #fafafa; border-radius: 6px; }
+.category-section.category-disabled { opacity: 0.6; background: #f5f5f5; border: 1px dashed #d9d9d9; }
 .category-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
 .category-name { font-weight: 500; font-size: 15px; }
 .keyword-tag { display: inline-block; padding: 4px 10px; background: white; border: 1px solid #d9d9d9; border-radius: 4px; font-size: 12px; margin: 4px; }
@@ -292,8 +293,10 @@ let currentClientId = null;
 let currentClientKey = null;
 let currentMenu = 'clients';
 let currentFeedbackTab = 'pending';
+let currentFeedbackList = [];
 let clientsData = [];
 let lastTestResults = null;
+let lastTestHitResults = null;
 let lastTestInputs = null;
 
 const STORAGE_KEY_CLIENT = 'danmaku_risk_current_client_id';
@@ -444,7 +447,7 @@ document.querySelectorAll('.menu-item').forEach(el => {
 
 async function loadCategories() {
   if (!currentClientId) return;
-  const res = await api(`/api/admin/clients/${currentClientId}/categories`);
+  const res = await api(`/api/admin/clients/${currentClientId}/categories?include_disabled=1`);
   if (res.code === 200) {
     const container = document.getElementById('categoryList');
     if (res.data.length === 0) {
@@ -452,7 +455,7 @@ async function loadCategories() {
       return;
     }
     container.innerHTML = res.data.map(cat => `
-      <div class="category-section">
+      <div class="category-section ${cat.status === 0 ? 'category-disabled' : ''}">
         <div class="category-header">
           <div>
             <span class="category-name">${renderText(cat.category_name)}</span>
@@ -534,6 +537,7 @@ async function loadFeedback() {
   
   const res = await api(`/api/report/clients/${currentClientId}/feedback?handled=${handled === null ? '' : handled}`);
   if (res.code === 200) {
+    currentFeedbackList = res.data || [];
     const tbody = document.getElementById('feedbackTableBody');
     if (res.data.length === 0) {
       tbody.innerHTML = '<tr><td colspan="7" class="empty">暂无反馈记录</td></tr>';
@@ -569,10 +573,10 @@ async function loadFeedback() {
         <td>
           <div class="action-btns">
             ${!item.handled ? `
-              <button class="btn btn-default btn-small" onclick='showQuickAddWhitelistModal(${JSON.stringify({ id: item.id, content: item.content || '' })})'>+ 白名单</button>
-              <button class="btn btn-default btn-small" onclick='showQuickAddFocusModal(${JSON.stringify({ id: item.id, content: item.content || '' })})'>+ 关注词</button>
+              <button class="btn btn-default btn-small" onclick="showQuickAddWhitelistModal(${item.id})">+ 白名单</button>
+              <button class="btn btn-default btn-small" onclick="showQuickAddFocusModal(${item.id})">+ 关注词</button>
               <button class="btn btn-primary btn-small" onclick="showHandleFeedbackModal(${item.id})">处理</button>
-            ` : '<button class="btn btn-default btn-small" onclick="viewFeedbackDetail(' + item.id + ')">查看</button>'}
+            ` : `<button class="btn btn-default btn-small" onclick="viewFeedbackDetail(${item.id})">查看</button>`}
           </div>
         </td>
       </tr>
@@ -691,11 +695,11 @@ function showEditClientModal(id) {
     <div class="modal-title">编辑客户</div>
     <div class="form-group">
       <label>客户名称 *</label>
-      <input type="text" id="editClientName" value="${renderText(client.client_name)}" placeholder="请输入客户名称">
+      <input type="text" id="editClientName" value="${safeTitle(client.client_name)}" placeholder="请输入客户名称">
     </div>
     <div class="form-group">
       <label>Client Key</label>
-      <input type="text" value="${renderText(client.client_key)}" disabled style="background: #f5f5f5;">
+      <input type="text" value="${safeTitle(client.client_key)}" disabled style="background: #f5f5f5;">
       <div class="hint-text">Client Key 无法修改</div>
     </div>
     <div class="form-row">
@@ -846,14 +850,14 @@ async function addCategory() {
 }
 
 function showEditCategoryModal(id) {
-  api(`/api/admin/clients/${currentClientId}/categories`).then(res => {
+  api(`/api/admin/clients/${currentClientId}/categories?include_disabled=1`).then(res => {
     if (res.code !== 200) return;
     const cat = res.data.find(c => c.id === id);
     if (!cat) return;
     
     const keywordsHtml = (cat.keywords || []).map((kw, idx) => `
       <div class="keyword-edit-item" data-idx="${idx}">
-        <input type="text" class="kw-text" value="${renderText(kw.keyword)}" placeholder="关键词">
+        <input type="text" class="kw-text" value="${safeTitle(kw.keyword)}" placeholder="关键词">
         <select class="kw-match">
           <option value="contains" ${kw.match_type === 'contains' ? 'selected' : ''}>包含</option>
           <option value="exact" ${kw.match_type === 'exact' ? 'selected' : ''}>精确</option>
@@ -872,12 +876,12 @@ function showEditCategoryModal(id) {
       <div class="modal-title">编辑风险类别</div>
       <div class="form-group">
         <label>类别编码</label>
-        <input type="text" value="${renderText(cat.category_code)}" disabled style="background: #f5f5f5;">
+        <input type="text" value="${safeTitle(cat.category_code)}" disabled style="background: #f5f5f5;">
         <div class="hint-text">类别编码无法修改</div>
       </div>
       <div class="form-group">
         <label>类别名称 *</label>
-        <input type="text" id="editCategoryName" value="${renderText(cat.category_name)}">
+        <input type="text" id="editCategoryName" value="${safeTitle(cat.category_name)}">
       </div>
       <div class="form-row">
         <div class="form-group">
@@ -1149,9 +1153,9 @@ async function addFocusWord() {
   }
 }
 
-function showQuickAddWhitelistModal(params) {
-  const feedbackId = params.id;
-  const content = params.content || '';
+function showQuickAddWhitelistModal(feedbackId) {
+  const feedback = currentFeedbackList.find(f => f.id === feedbackId);
+  const content = feedback ? feedback.content : '';
   showModal(`
     <div class="modal-title">加入白名单并处理反馈</div>
     <div class="form-group">
@@ -1225,9 +1229,9 @@ async function quickAddWhitelist() {
   }
 }
 
-function showQuickAddFocusModal(params) {
-  const feedbackId = params.id;
-  const content = params.content || '';
+function showQuickAddFocusModal(feedbackId) {
+  const feedback = currentFeedbackList.find(f => f.id === feedbackId);
+  const content = feedback ? feedback.content : '';
   showModal(`
     <div class="modal-title">加入重点关注词并处理反馈</div>
     <div class="form-group">
@@ -1459,9 +1463,8 @@ async function runTest() {
   
   const lines = content.split('\n').map(l => l.trim()).filter(l => l);
   const container = document.getElementById('testResult');
-  container.innerHTML = '<div class="card-title" style="margin-bottom: 12px;">测试结果（仅调试，不计入正式数据）</div>';
   
-  const results = [];
+  const allResults = [];
   
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
@@ -1476,44 +1479,62 @@ async function runTest() {
       }
     });
     
-    const d = res.data;
-    results.push({ content: line, result: d });
-    
-    const reasonsHtml = (d.hit_reasons || []).map(r => 
-      `<div style="margin-left: 16px; font-size: 12px; color: #666;">• ${renderText(r.description)}</div>`
-    ).join('');
-    
-    const catsHtml = (d.risk_categories || []).map(c => 
-      `<span class="badge badge-level-${c.level}" style="margin-right: 4px;">${renderText(c.name)}</span>`
-    ).join('');
-    
-    const suggestionsHtml = d.suggestions && d.suggestions.length > 0 
-      ? `<div style="margin-top: 6px; font-size: 12px; color: #fa8c16;">💡 建议: ${renderText(d.suggestions.join('; '))}</div>`
-      : '';
-    
-    container.innerHTML += `
-      <div class="test-result-item">
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px;">
-          <div>
-            <span style="font-weight: 500;">${renderText(line)}</span>
+    allResults.push({ content: line, result: res.data });
+  }
+  
+  const hitResults = allResults.filter(r => r.result.is_risky);
+  const totalCount = allResults.length;
+  const hitCount = hitResults.length;
+  
+  let html = '<div class="card-title" style="margin-bottom: 12px;">';
+  html += `测试结果（仅调试，不计入正式数据）`;
+  html += `<span style="float: right; font-size: 13px; color: #888; font-weight: normal;">命中 ${hitCount} 条 / 共 ${totalCount} 条</span>`;
+  html += '</div>';
+  
+  if (hitCount === 0) {
+    html += `
+      <div style="text-align: center; padding: 40px; color: #52c41a; background: #f6ffed; border: 1px solid #b7eb8f; border-radius: 4px;">
+        <div style="font-size: 36px; margin-bottom: 12px;">✅</div>
+        <div style="font-size: 15px; font-weight: 500; margin-bottom: 6px;">全部未命中</div>
+        <div style="font-size: 13px;">共 ${totalCount} 条弹幕，均未触发现有风险规则</div>
+      </div>
+    `;
+  } else {
+    hitResults.forEach(item => {
+      const d = item.result;
+      const reasonsHtml = (d.hit_reasons || []).map(r => 
+        `<div style="margin-left: 16px; font-size: 12px; color: #666;">• ${renderText(r.description)}</div>`
+      ).join('');
+      
+      const catsHtml = (d.risk_categories || []).map(c => 
+        `<span class="badge badge-level-${c.level}" style="margin-right: 4px;">${renderText(c.name)}</span>`
+      ).join('');
+      
+      const suggestionsHtml = d.suggestions && d.suggestions.length > 0 
+        ? `<div style="margin-top: 6px; font-size: 12px; color: #fa8c16;">💡 建议: ${renderText(d.suggestions.join('; '))}</div>`
+        : '';
+      
+      html += `
+        <div class="test-result-item">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px;">
+            <div>
+              <span style="font-weight: 500;">${renderText(item.content)}</span>
+            </div>
+            <span class="badge badge-level-${d.risk_level}">${renderText(d.risk_level_label)}</span>
           </div>
-          <span class="badge badge-level-${d.risk_level}">${renderText(d.risk_level_label)}</span>
-        </div>
-        ${d.is_risky ? `
           <div style="margin-bottom: 6px;">${catsHtml}</div>
           ${reasonsHtml}
           ${suggestionsHtml}
-        ` : `
-          <div style="font-size: 12px; color: #888;">
-            ${d.whitelisted ? '✅ 白名单命中，已放行' : '✅ 无风险'}
-          </div>
-        `}
-      </div>
-    `;
+        </div>
+      `;
+    });
   }
   
+  container.innerHTML = html;
+  
   lastTestInputs = lines;
-  lastTestResults = results;
+  lastTestResults = allResults;
+  lastTestHitResults = hitResults;
 }
 
 async function saveDebugHistory() {
@@ -1529,7 +1550,7 @@ async function saveDebugHistory() {
     body: {
       client_id: currentClientId,
       input_danmakus: lastTestInputs,
-      results: lastTestResults,
+      results: lastTestHitResults || [],
       remark
     }
   });
@@ -1590,45 +1611,63 @@ function loadHistoryToTest(id) {
     document.getElementById('testContent').value = (item.input_danmakus || []).join('\n');
     document.getElementById('testRemark').value = item.remark || '';
     
-    const container = document.getElementById('testResult');
-    container.innerHTML = '<div class="card-title" style="margin-bottom: 12px;">历史测试结果（点击「运行测试」可使用当前规则重新验证）</div>';
+    const allResults = item.results || [];
+    const hitResults = allResults.filter(r => r.result && r.result.is_risky);
+    const totalCount = (item.input_danmakus || []).length;
+    const hitCount = hitResults.length;
     
-    (item.results || []).forEach(item2 => {
-      const line = item2.content;
-      const d = item2.result;
-      
-      const reasonsHtml = (d.hit_reasons || []).map(r => 
-        `<div style="margin-left: 16px; font-size: 12px; color: #666;">• ${renderText(r.description)}</div>`
-      ).join('');
-      
-      const catsHtml = (d.risk_categories || []).map(c => 
-        `<span class="badge badge-level-${c.level}" style="margin-right: 4px;">${renderText(c.name)}</span>`
-      ).join('');
-      
-      const suggestionsHtml = d.suggestions && d.suggestions.length > 0 
-        ? `<div style="margin-top: 6px; font-size: 12px; color: #fa8c16;">💡 建议: ${renderText(d.suggestions.join('; '))}</div>`
-        : '';
-      
-      container.innerHTML += `
-        <div class="test-result-item">
-          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px;">
-            <div>
-              <span style="font-weight: 500;">${renderText(line)}</span>
+    const container = document.getElementById('testResult');
+    let html = '<div class="card-title" style="margin-bottom: 12px;">';
+    html += '历史测试结果（点击「运行测试」可使用当前规则重新验证）';
+    html += `<span style="float: right; font-size: 13px; color: #888; font-weight: normal;">命中 ${hitCount} 条 / 共 ${totalCount} 条</span>`;
+    html += '</div>';
+    
+    if (hitCount === 0) {
+      html += `
+        <div style="text-align: center; padding: 40px; color: #52c41a; background: #f6ffed; border: 1px solid #b7eb8f; border-radius: 4px;">
+          <div style="font-size: 36px; margin-bottom: 12px;">✅</div>
+          <div style="font-size: 15px; font-weight: 500; margin-bottom: 6px;">全部未命中</div>
+          <div style="font-size: 13px;">共 ${totalCount} 条弹幕，均未触发现有风险规则</div>
+        </div>
+      `;
+    } else {
+      hitResults.forEach(item2 => {
+        const line = item2.content;
+        const d = item2.result;
+        
+        const reasonsHtml = (d.hit_reasons || []).map(r => 
+          `<div style="margin-left: 16px; font-size: 12px; color: #666;">• ${renderText(r.description)}</div>`
+        ).join('');
+        
+        const catsHtml = (d.risk_categories || []).map(c => 
+          `<span class="badge badge-level-${c.level}" style="margin-right: 4px;">${renderText(c.name)}</span>`
+        ).join('');
+        
+        const suggestionsHtml = d.suggestions && d.suggestions.length > 0 
+          ? `<div style="margin-top: 6px; font-size: 12px; color: #fa8c16;">💡 建议: ${renderText(d.suggestions.join('; '))}</div>`
+          : '';
+        
+        html += `
+          <div class="test-result-item">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px;">
+              <div>
+                <span style="font-weight: 500;">${renderText(line)}</span>
+              </div>
+              <span class="badge badge-level-${d.risk_level}">${renderText(d.risk_level_label)}</span>
             </div>
-            <span class="badge badge-level-${d.risk_level}">${renderText(d.risk_level_label)}</span>
-          </div>
-          ${d.is_risky ? `
             <div style="margin-bottom: 6px;">${catsHtml}</div>
             ${reasonsHtml}
             ${suggestionsHtml}
-          ` : `
-            <div style="font-size: 12px; color: #888;">
-              ${d.whitelisted ? '✅ 白名单命中，已放行' : '✅ 无风险'}
-            </div>
-          `}
-        </div>
-      `;
-    });
+          </div>
+        `;
+      });
+    }
+    
+    container.innerHTML = html;
+    
+    lastTestInputs = item.input_danmakus || [];
+    lastTestResults = allResults;
+    lastTestHitResults = hitResults;
   });
 }
 

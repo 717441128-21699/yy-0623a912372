@@ -141,10 +141,10 @@ const clientModel = {
 };
 
 const riskCategoryModel = {
-  getByClientId(clientId) {
+  getByClientId(clientId, includeDisabled = false) {
     return data.risk_categories
-      .filter(c => c.client_id === clientId && c.status === 1)
-      .sort((a, b) => b.risk_level - a.risk_level);
+      .filter(c => c.client_id === clientId && (includeDisabled || c.status === 1))
+      .sort((a, b) => b.risk_level - a.risk_level || (a.status - b.status));
   },
 
   getById(id) {

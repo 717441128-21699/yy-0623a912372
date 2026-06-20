@@ -48,7 +48,8 @@ router.delete('/clients/:id', (req, res) => {
 
 router.get('/clients/:id/categories', (req, res) => {
   const clientId = parseInt(req.params.id);
-  const categories = db.riskCategory.getByClientId(clientId);
+  const includeDisabled = req.query.include_disabled === '1' || req.query.include_disabled === 'true';
+  const categories = db.riskCategory.getByClientId(clientId, includeDisabled);
   
   const categoriesWithKeywords = categories.map(cat => {
     const keywords = db.riskKeyword.getByCategoryId(cat.id);
